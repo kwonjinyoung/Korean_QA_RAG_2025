@@ -62,8 +62,8 @@ python -m run.test \
 ## Reference
 국립국어원 인공지능 (AI)말평 (https://kli.korean.go.kr/benchmark)  
 transformers (https://github.com/huggingface/transformers)  
-Bllossome (Teddysum) (https://huggingface.co/Bllossom/llama-3.2-Korean-Bllossom-3B)
-Qwen3-8B (https://huggingface.co/Qwen/Qwen3-8B)
+Bllossome (Teddysum) (https://huggingface.co/Bllossom/llama-3.2-Korean-Bllossom-3B)  
+Qwen3-8B (https://huggingface.co/Qwen/Qwen3-8B)  
 HyperCLOVAX-SEED-Text-Instruct-1.5B (https://huggingface.co/naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B)
 
 
