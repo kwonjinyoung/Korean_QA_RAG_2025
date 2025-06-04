@@ -12,7 +12,7 @@
 |HyperCLOVAX Text 1.5B|||||
 
  - '{선택/교정 문장}'이 옳다 부분 : EM
- - 이유 생성: ROUGE, BERTScore, BLEURT의 평균
+ - 이유 생성: ROUGE, BERTScore, BLEURT
 
 
 평가 코드 : https://github.com/teddysum/korean_evaluation.git
