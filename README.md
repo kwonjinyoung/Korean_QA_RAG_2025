@@ -5,7 +5,7 @@
 추론 실행 방법(How to Run)은 아래에서 확인하실 수 있습니다.
 
 ### Baseline
-|Model|Exact Match(단답형)|ROUGE(서술형)|BERTScore(서술형)|BLEURT(서술형)|
+|Model|Exact Match|ROUGE|BERTScore|BLEURT|
 |:---:|---|---|---|---|
 |qwen3 8b|||||
 |Bllossom 3b|||||
