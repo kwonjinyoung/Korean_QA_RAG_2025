@@ -9,6 +9,7 @@ dependencies = [
     "langchain>=0.3.26",
     "langchain-community>=0.3.26",
     "pypdf>=5.6.0",
+    "python-docx>=1.2.0",
     "qdrant-client>=1.14.3",
     "requests>=2.32.4",
     "tqdm>=4.67.1",
