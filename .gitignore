@@ -61,8 +61,6 @@ models/
 *.bin
 
 # Data files (대용량 데이터 파일들)
-*.pdf
-*.jsonl
 data/
 datasets/
 
