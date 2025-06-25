@@ -1,0 +1,150 @@
+[
+  {
+    "question": "\"우동이 {불을/불} 것 같아 걱정이다.\" 가운데 올바른 것을 선택하고, 그 이유를 설명하세요.",
+    "answer": "<think>\nOkay, let's tackle this question. The sentence is \"우동이 {불을/불} 것 같아 걱정이다.\" and I need to choose between \"불을\" and \"불\". \n\nFirst, I remember from the context provided that when a verb is followed by a particle, the particle is attached to the verb. For example, in the context, \"붙이다\" is used with particles like \"붙인다\" (attach), and examples include \"불을 붙인다\" which means \"to light a fire\". Here, \"불을\" is the object particle attached to the verb \"붙이다\".\n\nLooking at the sentence structure, \"우동이\" is the subject, and the structure is \"우동이 [verb] 것 같아 걱정이다.\" So the verb here should be \"붙이다\" (to light), and the object is \"불\" (fire). The particle \"을\" is used to mark the object of the verb. Therefore, the correct form should be \"불을\".\n\nThe context also mentions that when a verb is combined with a particle, they are written together. For instance, \"붙이다\" becomes \"붙인다\" with the particle. So applying that rule here, \"불을\" is correct because it's the object particle attached to the verb \"붙이다\".\n\nAnother example from the context is \"불을 붙인다\" which is used in the context. So \"불을\" is the correct choice here. The other option, \"불\", would be incorrect because it doesn't include the object particle \"을\" which is necessary when indicating the object of the verb.\n</think>\n\n\"우동이 불을 것 같아 걱정이다.\"가 옳다. '불을'은 '불'과 '을'이 결합된 형태로, '붙이다'라는 용언에 대한 객체를 표시하는 관계대명어(을/를)를 붙여 쓰는 경우이다. 컨텍스트에서 '불을 붙인다'와 같은 예시가 주어졌으며, 이는 '불'이라는 객체에 '을'이라는 관계대명어를 붙여 용언과 함께 쓰는 규칙을 보여준다. 따라서 '불을'은 용언 '붙이다'에 객체를 나타내는 관계대명어를 붙인 정확한 표현이다. 반면 '불'만 사용하면 객체를 명확히 표시하지 못해 문맥상 부적절하다.",
+    "context": [
+      {
+        "chunk_id": 199,
+        "content": "용언의 어간과 어미는 구별하여 적는다.\n- 같다, 같고, 같아, 같으니",
+        "original_content": "용언의 어간과 어미는 구별하여 적는다.\n- 먹다, 먹고, 먹어, 먹으니\n- 신다, 신고, 신어, 신으니\n- 믿다, 믿고, 믿어, 믿으니\n- 울다, 울고, 울어, (우니)\n- 넘다, 넘고, 넘어, 넘으니\n- 입다, 입고, 입어, 입으니\n- 웃다, 웃고, 웃어, 웃으니\n- 찾다, 찾고, 찾아, 찾으니\n- 좇다, 좇고, 좇아, 좇으니\n- 같다, 같고, 같아, 같으니\n- 높다, 높고, 높아, 높으니\n- 좋다, 좋고, 좋아, 좋으니\n- 깎다, 깎고, 깎아, 깎으니\n- 앉다, 앉고, 앉아, 앉으니\n- 많다, 많고, 많아, 많으니\n- 늙다, 늙고, 늙어, 늙으니\n- 젊다, 젊고, 젊어, 젊으니\n- 넓다, 넓고, 넓어, 넓으니\n- 훑다, 훑고, 훑어, 훑으니\n- 읊다, 읊고, 읊어, 읊으니\n- 옳다, 옳고, 옳아, 옳으니\n- 없다, 없고, 없어, 없으니\n- 있다, 있고, 있어, 있으니\n\n[붙임 1] 두 개의 용언이 어울려 한 개의 용언이 될 적에, 앞말의 본뜻이 유지되고 있는 것은 그 원형을 밝히어 적고, 그 본뜻에서 멀어진 것은 밝히어 적지 아니한다.\n(1) 앞말의 본뜻이 유지되고 있는 것\n- 넘어지다, 늘어나다, 늘어지다, 돌아가다, 되짚어가다, 들어가다, 떨어지다, 벌어지다, 엎어지다, 접어들다, 틀어지다, 흩어지다\n(2) 본뜻에서 멀어진 것\n- 드러나다, 사라지다, 쓰러지다\n[붙임 2] 종결형에서 사용되는 어미 ’-오’는 ’요’로 소리 나는 경우가 있더라도 그 원형을 밝혀 ’오’로 적는다.(ㄱ을 취하고, ㄴ을 버림.)\n- ㄱ: 이것은 책이오., 이리로 오시오., 이것은 책이 아니오.\n- ㄴ: 이것은 책이요., 이리로 오시요., 이것은 책이 아니요.\n[붙임 3] 연결형에서 사용되는 ’이요’는 ’이요’로 적는다.(ㄱ을 취하고, ㄴ을 버림.)\n- ㄱ: 이것은 책이요, 저것은 붓이요, 또 저것은 먹이다. \n- ㄴ: 이것은 책이오, 저것은 붓이오, 또 저것은 먹이다.",
+        "length": 39,
+        "score": 0.672025122,
+        "dense_score": 0.53146446,
+        "sparse_score": 8.065341449166036,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 80,
+        "content": "다음 말들은 각각 구별하여 적는다.\n- 붙이다: 우표를 붙인다., 책상을 벽에 붙였다., 흥정을 붙인다., 불을 붙인다., 감시원을 붙인다., 조건을 붙인다., 취미를 붙인다., 별명을 붙인다.",
+        "original_content": "다음 말들은 각각 구별하여 적는다.\n- 가름: 둘로 가름.\n- 갈음: 새 책상으로 갈음하였다.\n- 거름: 풀을 썩힌 거름.\n- 걸음: 빠른 걸음.\n- 거치다: 영월을 거쳐 왔다.\n- 걷히다: 외상값이 잘 걷힌다.\n- 걷잡다: 걷잡을 수 없는 상태.\n- 겉잡다: 겉잡아서 이틀 걸릴 일.\n- 그러므로(그러니까): 그는 부지런하다. 그러므로 잘 산다.\n- 그럼으로(써): 그는 열심히 공부한다. 그럼으로(써) 은혜에 보답한다. (그렇게 하는 것으로)\n- 노름: 노름판이 벌어졌다.\n- 놀음(놀이): 즐거운 놀음.\n- 느리다: 진도가 너무 느리다.\n- 늘이다: 고무줄을 늘인다.\n- 늘리다: 수출량을 더 늘린다.\n- 다리다: 옷을 다린다.\n- 달이다: 약을 달인다.\n- 다치다: 부주의로 손을 다쳤다.\n- 닫히다: 문이 저절로 닫혔다.\n- 닫치다: 문을 힘껏 닫쳤다.\n- 마치다: 벌써 일을 마쳤다.\n- 맞히다: 여러 문제를 더 맞혔다.\n- 목거리: 목거리가 덧났다.\n- 목걸이: 금목걸이, 은목걸이.\n- 바치다: 나라를 위해 목숨을 바쳤다.\n- 받치다: 우산을 받치고 간다., 책받침을 받친다.\n- 받히다: 쇠뿔에 받혔다.\n- 밭치다: 술을 체에 밭친다.\n- 반드시: 약속은 반드시 지켜라.\n- 반듯이: 고개를 반듯이 들어라.\n- 부딪치다: 차와 차가 마주 부딪쳤다.\n- 부딪히다: 마차가 화물차에 부딪혔다.\n- 부치다: 힘이 부치는 일이다., 편지를 부친다., 논밭을 부친다., 빈대떡을 부친다., 식목일에 부치는 글., 회의에 부치는 안건., 인쇄에 부치는 원고., 삼촌 집에 숙식을 부친다.\n- 붙이다: 우표를 붙인다., 책상을 벽에 붙였다., 흥정을 붙인다., 불을 붙인다., 감시원을 붙인다., 조건을 붙인다., 취미를 붙인다., 별명을 붙인다.\n- 시키다: 일을 시킨다.\n- 식히다: 끓인 물을 식힌다.\n- 아름: 세 아름 되는 둘레.\n- 알음: 전부터 알음이 있는 사이.\n- 앎: 앎이 힘이다.\n- 안치다: 밥을 안친다.\n- 앉히다: 윗자리에 앉힌다.\n- 어름: 두 물건의 어름에서 일어난 현상.\n- 얼음: 얼음이 얼었다.\n- 이따가: 이따가 오너라.\n- 있다가: 돈은 있다가도 없다.\n- 저리다: 다친 다리가 저린다.\n- 절이다: 김장 배추를 절인다.\n- 조리다: 생선을 조린다. 통조림, 병조림.\n- 졸이다: 마음을 졸인다.\n- 주리다: 여러 날을 주렸다.\n- 줄이다: 비용을 줄인다.\n- 하노라고: 하노라고 한 것이 이 모양이다.\n- 하느라고: 공부하느라고 밤을 새웠다.\n- -느니보다(어미): 나를 찾아오느니보다 집에 있거라.\n- -는 이보다(의존 명사): 오는 이가 가는 이보다 많다.\n- -(으)리만큼(어미): 나를 미워하리만큼 그에게 잘못한 일이 없다.\n- -(으)ㄹ 이만큼(의존 명사): 찬성할 이도 반대할 이만큼이나 많을 것이다.\n- -(으)러(목적): 공부하러 간다.\n- -(으)려(의도): 서울 가려 한다.\n- (으)로서(자격): 사람으로서 그럴 수는 없다.\n- (으)로써(수단): 닭으로써 꿩을 대신했다.\n- -(으)므로(어미): 그가 나를 믿으므로 나도 그를 믿는다.\n- (-ㅁ, -음)으로(써)(조사): 그는 믿음으로(써) 산 보람을 느꼈다.",
+        "length": 108,
+        "score": 0.5698323802584644,
+        "dense_score": 0.5241294,
+        "sparse_score": 5.455983044643226,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 95,
+        "content": "다음 말들은 각각 구별하여 적는다.\n- 졸이다: 마음을 졸인다.",
+        "original_content": "다음 말들은 각각 구별하여 적는다.\n- 가름: 둘로 가름.\n- 갈음: 새 책상으로 갈음하였다.\n- 거름: 풀을 썩힌 거름.\n- 걸음: 빠른 걸음.\n- 거치다: 영월을 거쳐 왔다.\n- 걷히다: 외상값이 잘 걷힌다.\n- 걷잡다: 걷잡을 수 없는 상태.\n- 겉잡다: 겉잡아서 이틀 걸릴 일.\n- 그러므로(그러니까): 그는 부지런하다. 그러므로 잘 산다.\n- 그럼으로(써): 그는 열심히 공부한다. 그럼으로(써) 은혜에 보답한다. (그렇게 하는 것으로)\n- 노름: 노름판이 벌어졌다.\n- 놀음(놀이): 즐거운 놀음.\n- 느리다: 진도가 너무 느리다.\n- 늘이다: 고무줄을 늘인다.\n- 늘리다: 수출량을 더 늘린다.\n- 다리다: 옷을 다린다.\n- 달이다: 약을 달인다.\n- 다치다: 부주의로 손을 다쳤다.\n- 닫히다: 문이 저절로 닫혔다.\n- 닫치다: 문을 힘껏 닫쳤다.\n- 마치다: 벌써 일을 마쳤다.\n- 맞히다: 여러 문제를 더 맞혔다.\n- 목거리: 목거리가 덧났다.\n- 목걸이: 금목걸이, 은목걸이.\n- 바치다: 나라를 위해 목숨을 바쳤다.\n- 받치다: 우산을 받치고 간다., 책받침을 받친다.\n- 받히다: 쇠뿔에 받혔다.\n- 밭치다: 술을 체에 밭친다.\n- 반드시: 약속은 반드시 지켜라.\n- 반듯이: 고개를 반듯이 들어라.\n- 부딪치다: 차와 차가 마주 부딪쳤다.\n- 부딪히다: 마차가 화물차에 부딪혔다.\n- 부치다: 힘이 부치는 일이다., 편지를 부친다., 논밭을 부친다., 빈대떡을 부친다., 식목일에 부치는 글., 회의에 부치는 안건., 인쇄에 부치는 원고., 삼촌 집에 숙식을 부친다.\n- 붙이다: 우표를 붙인다., 책상을 벽에 붙였다., 흥정을 붙인다., 불을 붙인다., 감시원을 붙인다., 조건을 붙인다., 취미를 붙인다., 별명을 붙인다.\n- 시키다: 일을 시킨다.\n- 식히다: 끓인 물을 식힌다.\n- 아름: 세 아름 되는 둘레.\n- 알음: 전부터 알음이 있는 사이.\n- 앎: 앎이 힘이다.\n- 안치다: 밥을 안친다.\n- 앉히다: 윗자리에 앉힌다.\n- 어름: 두 물건의 어름에서 일어난 현상.\n- 얼음: 얼음이 얼었다.\n- 이따가: 이따가 오너라.\n- 있다가: 돈은 있다가도 없다.\n- 저리다: 다친 다리가 저린다.\n- 절이다: 김장 배추를 절인다.\n- 조리다: 생선을 조린다. 통조림, 병조림.\n- 졸이다: 마음을 졸인다.\n- 주리다: 여러 날을 주렸다.\n- 줄이다: 비용을 줄인다.\n- 하노라고: 하노라고 한 것이 이 모양이다.\n- 하느라고: 공부하느라고 밤을 새웠다.\n- -느니보다(어미): 나를 찾아오느니보다 집에 있거라.\n- -는 이보다(의존 명사): 오는 이가 가는 이보다 많다.\n- -(으)리만큼(어미): 나를 미워하리만큼 그에게 잘못한 일이 없다.\n- -(으)ㄹ 이만큼(의존 명사): 찬성할 이도 반대할 이만큼이나 많을 것이다.\n- -(으)러(목적): 공부하러 간다.\n- -(으)려(의도): 서울 가려 한다.\n- (으)로서(자격): 사람으로서 그럴 수는 없다.\n- (으)로써(수단): 닭으로써 꿩을 대신했다.\n- -(으)므로(어미): 그가 나를 믿으므로 나도 그를 믿는다.\n- (-ㅁ, -음)으로(써)(조사): 그는 믿음으로(써) 산 보람을 느꼈다.",
+        "length": 35,
+        "score": 0.398778989,
+        "dense_score": 0.56968427,
+        "sparse_score": 0.0,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 108,
+        "content": "다음 말들은 각각 구별하여 적는다.\n- -(으)므로(어미): 그가 나를 믿으므로 나도 그를 믿는다.",
+        "original_content": "다음 말들은 각각 구별하여 적는다.\n- 가름: 둘로 가름.\n- 갈음: 새 책상으로 갈음하였다.\n- 거름: 풀을 썩힌 거름.\n- 걸음: 빠른 걸음.\n- 거치다: 영월을 거쳐 왔다.\n- 걷히다: 외상값이 잘 걷힌다.\n- 걷잡다: 걷잡을 수 없는 상태.\n- 겉잡다: 겉잡아서 이틀 걸릴 일.\n- 그러므로(그러니까): 그는 부지런하다. 그러므로 잘 산다.\n- 그럼으로(써): 그는 열심히 공부한다. 그럼으로(써) 은혜에 보답한다. (그렇게 하는 것으로)\n- 노름: 노름판이 벌어졌다.\n- 놀음(놀이): 즐거운 놀음.\n- 느리다: 진도가 너무 느리다.\n- 늘이다: 고무줄을 늘인다.\n- 늘리다: 수출량을 더 늘린다.\n- 다리다: 옷을 다린다.\n- 달이다: 약을 달인다.\n- 다치다: 부주의로 손을 다쳤다.\n- 닫히다: 문이 저절로 닫혔다.\n- 닫치다: 문을 힘껏 닫쳤다.\n- 마치다: 벌써 일을 마쳤다.\n- 맞히다: 여러 문제를 더 맞혔다.\n- 목거리: 목거리가 덧났다.\n- 목걸이: 금목걸이, 은목걸이.\n- 바치다: 나라를 위해 목숨을 바쳤다.\n- 받치다: 우산을 받치고 간다., 책받침을 받친다.\n- 받히다: 쇠뿔에 받혔다.\n- 밭치다: 술을 체에 밭친다.\n- 반드시: 약속은 반드시 지켜라.\n- 반듯이: 고개를 반듯이 들어라.\n- 부딪치다: 차와 차가 마주 부딪쳤다.\n- 부딪히다: 마차가 화물차에 부딪혔다.\n- 부치다: 힘이 부치는 일이다., 편지를 부친다., 논밭을 부친다., 빈대떡을 부친다., 식목일에 부치는 글., 회의에 부치는 안건., 인쇄에 부치는 원고., 삼촌 집에 숙식을 부친다.\n- 붙이다: 우표를 붙인다., 책상을 벽에 붙였다., 흥정을 붙인다., 불을 붙인다., 감시원을 붙인다., 조건을 붙인다., 취미를 붙인다., 별명을 붙인다.\n- 시키다: 일을 시킨다.\n- 식히다: 끓인 물을 식힌다.\n- 아름: 세 아름 되는 둘레.\n- 알음: 전부터 알음이 있는 사이.\n- 앎: 앎이 힘이다.\n- 안치다: 밥을 안친다.\n- 앉히다: 윗자리에 앉힌다.\n- 어름: 두 물건의 어름에서 일어난 현상.\n- 얼음: 얼음이 얼었다.\n- 이따가: 이따가 오너라.\n- 있다가: 돈은 있다가도 없다.\n- 저리다: 다친 다리가 저린다.\n- 절이다: 김장 배추를 절인다.\n- 조리다: 생선을 조린다. 통조림, 병조림.\n- 졸이다: 마음을 졸인다.\n- 주리다: 여러 날을 주렸다.\n- 줄이다: 비용을 줄인다.\n- 하노라고: 하노라고 한 것이 이 모양이다.\n- 하느라고: 공부하느라고 밤을 새웠다.\n- -느니보다(어미): 나를 찾아오느니보다 집에 있거라.\n- -는 이보다(의존 명사): 오는 이가 가는 이보다 많다.\n- -(으)리만큼(어미): 나를 미워하리만큼 그에게 잘못한 일이 없다.\n- -(으)ㄹ 이만큼(의존 명사): 찬성할 이도 반대할 이만큼이나 많을 것이다.\n- -(으)러(목적): 공부하러 간다.\n- -(으)려(의도): 서울 가려 한다.\n- (으)로서(자격): 사람으로서 그럴 수는 없다.\n- (으)로써(수단): 닭으로써 꿩을 대신했다.\n- -(으)므로(어미): 그가 나를 믿으므로 나도 그를 믿는다.\n- (-ㅁ, -음)으로(써)(조사): 그는 믿음으로(써) 산 보람을 느꼈다.",
+        "length": 55,
+        "score": 0.37978489499999996,
+        "dense_score": 0.54254985,
+        "sparse_score": 0.0,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 98,
+        "content": "다음 말들은 각각 구별하여 적는다.\n- 하노라고: 하노라고 한 것이 이 모양이다.",
+        "original_content": "다음 말들은 각각 구별하여 적는다.\n- 가름: 둘로 가름.\n- 갈음: 새 책상으로 갈음하였다.\n- 거름: 풀을 썩힌 거름.\n- 걸음: 빠른 걸음.\n- 거치다: 영월을 거쳐 왔다.\n- 걷히다: 외상값이 잘 걷힌다.\n- 걷잡다: 걷잡을 수 없는 상태.\n- 겉잡다: 겉잡아서 이틀 걸릴 일.\n- 그러므로(그러니까): 그는 부지런하다. 그러므로 잘 산다.\n- 그럼으로(써): 그는 열심히 공부한다. 그럼으로(써) 은혜에 보답한다. (그렇게 하는 것으로)\n- 노름: 노름판이 벌어졌다.\n- 놀음(놀이): 즐거운 놀음.\n- 느리다: 진도가 너무 느리다.\n- 늘이다: 고무줄을 늘인다.\n- 늘리다: 수출량을 더 늘린다.\n- 다리다: 옷을 다린다.\n- 달이다: 약을 달인다.\n- 다치다: 부주의로 손을 다쳤다.\n- 닫히다: 문이 저절로 닫혔다.\n- 닫치다: 문을 힘껏 닫쳤다.\n- 마치다: 벌써 일을 마쳤다.\n- 맞히다: 여러 문제를 더 맞혔다.\n- 목거리: 목거리가 덧났다.\n- 목걸이: 금목걸이, 은목걸이.\n- 바치다: 나라를 위해 목숨을 바쳤다.\n- 받치다: 우산을 받치고 간다., 책받침을 받친다.\n- 받히다: 쇠뿔에 받혔다.\n- 밭치다: 술을 체에 밭친다.\n- 반드시: 약속은 반드시 지켜라.\n- 반듯이: 고개를 반듯이 들어라.\n- 부딪치다: 차와 차가 마주 부딪쳤다.\n- 부딪히다: 마차가 화물차에 부딪혔다.\n- 부치다: 힘이 부치는 일이다., 편지를 부친다., 논밭을 부친다., 빈대떡을 부친다., 식목일에 부치는 글., 회의에 부치는 안건., 인쇄에 부치는 원고., 삼촌 집에 숙식을 부친다.\n- 붙이다: 우표를 붙인다., 책상을 벽에 붙였다., 흥정을 붙인다., 불을 붙인다., 감시원을 붙인다., 조건을 붙인다., 취미를 붙인다., 별명을 붙인다.\n- 시키다: 일을 시킨다.\n- 식히다: 끓인 물을 식힌다.\n- 아름: 세 아름 되는 둘레.\n- 알음: 전부터 알음이 있는 사이.\n- 앎: 앎이 힘이다.\n- 안치다: 밥을 안친다.\n- 앉히다: 윗자리에 앉힌다.\n- 어름: 두 물건의 어름에서 일어난 현상.\n- 얼음: 얼음이 얼었다.\n- 이따가: 이따가 오너라.\n- 있다가: 돈은 있다가도 없다.\n- 저리다: 다친 다리가 저린다.\n- 절이다: 김장 배추를 절인다.\n- 조리다: 생선을 조린다. 통조림, 병조림.\n- 졸이다: 마음을 졸인다.\n- 주리다: 여러 날을 주렸다.\n- 줄이다: 비용을 줄인다.\n- 하노라고: 하노라고 한 것이 이 모양이다.\n- 하느라고: 공부하느라고 밤을 새웠다.\n- -느니보다(어미): 나를 찾아오느니보다 집에 있거라.\n- -는 이보다(의존 명사): 오는 이가 가는 이보다 많다.\n- -(으)리만큼(어미): 나를 미워하리만큼 그에게 잘못한 일이 없다.\n- -(으)ㄹ 이만큼(의존 명사): 찬성할 이도 반대할 이만큼이나 많을 것이다.\n- -(으)러(목적): 공부하러 간다.\n- -(으)려(의도): 서울 가려 한다.\n- (으)로서(자격): 사람으로서 그럴 수는 없다.\n- (으)로써(수단): 닭으로써 꿩을 대신했다.\n- -(으)므로(어미): 그가 나를 믿으므로 나도 그를 믿는다.\n- (-ㅁ, -음)으로(써)(조사): 그는 믿음으로(써) 산 보람을 느꼈다.",
+        "length": 45,
+        "score": 0.37928597,
+        "dense_score": 0.5418371,
+        "sparse_score": 0.0,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      }
+    ],
+    "search_type": "hybrid",
+    "search_params": {
+      "top_k": 5,
+      "alpha": 0.7,
+      "temperature": 0.7
+    },
+    "processing_time": 126.12882423400879,
+    "original_data": {
+      "question_type": "선택형",
+      "question": "\"우동이 {불을/불} 것 같아 걱정이다.\" 가운데 올바른 것을 선택하고, 그 이유를 설명하세요.",
+      "id": "1"
+    },
+    "generated_prompt": "[질문]을 잘 읽고 답변을 생성하시오. 문제를 그대로 출력하지 마시오.\n[지침]\n주어진 보기들 중에서 가장 적절한 것을 선택하여 \"~가 옳다.\" 형태로 답변하고, 그 이유를 설명하시오.\n\n[예시]\n질문: \"나는 그를 본 적이 있음을 {기억해냈다/기억해 냈다}.\" 가운데 올바른 것을 선택하고, 그 이유를 설명하세요.\n답변: \"나는 그를 본 적이 있음을 기억해 냈다.\"가 옳다. '기억해 냈다'는 '기억하-+-아+냈다'의 구성이다. 이처럼 '본용언+-아/-어+보조 용언' 구성인 경우 본용언과 보조 용언을 붙여 쓰는 것이 허용되지만, 이러한 구성을 갖더라도 앞말이 3음절 이상의 합성어나 파생어라면 보조 용언을 붙여 쓰는 것이 허용되지 않는다. '기억하다'는 '기억'과 '-하다'가 결합한 파생어이며 '기억해'는 3음절이다. 따라서 '기억해'와 '냈다'는 띄어 써야 한다.\n\n[기타 정보]\n- id: 1\n\n[질문]\n\"우동이 {불을/불} 것 같아 걱정이다.\" 가운데 올바른 것을 선택하고, 그 이유를 설명하세요."
+  },
+  {
+    "question": "다음 문장에서 어문 규범에 부합하지 않는 부분을 찾아 고치고, 그 이유를 설명하세요.\n\"또한 갸름한 얼굴에 초승달 같은 눈썹, 가늘고 긴 눈, 오똑한 코, 작고 예쁜 입 등 섬세한 이목구비가 우아한 인상을 준다.\"",
+    "answer": "<think>\nOkay, let's tackle this question. The user wants me to find parts of the sentence that don't follow the language norms and correct them, explaining why. The sentence is: \"또한 갸름한 얼굴에 초승달 같은 눈썹, 가늘고 긴 눈, 오똑한 코, 작고 예쁜 입 등 섬세한 이목구비가 우아한 인상을 준다.\"\n\nFirst, I need to check the context provided. The context mentions that '웃-' and '윗-' should be unified as '윗-' based on the noun '위'. Also, there's a rule about repeating syllables in a word being written with the same character. \n\nLooking at the original sentence, I notice the word '눈썹'. The context lists '윗-눈썹' as correct, so '눈썹' is okay. Wait, but the original sentence uses '눈썹' which is the standard form. Wait, maybe there's another part. Let me check again.\n\nWait, the context says that '웃-' and '윗-' should be unified as '윗-'. But in the sentence, the word is '눈썹', which is '눈썹'—no '웃' or '윗' there. Hmm. Maybe there's another part. Let me check the other parts of the sentence.\n\nThe sentence has '가늘고 긴 눈', '오똑한 코', '작고 예쁜 입'. Are there any words that might be using non-standard prefixes? Wait, maybe the word '이목구비' is correct. Let me check the context again. The context doesn't mention '이목구비', so maybe that's okay.\n\nWait, perhaps the issue is with the word '가늘고 긴 눈'. The prefix '가늘' is correct. But maybe there's a different rule. The context also mentions that when the same syllables repeat, they should be written with the same character. For example, '딱딱', 'CppObject', etc. But in the sentence, there's no repetition of syllables. \n\nWait, maybe the problem is with the word '눈썹'. Let me check the context again. The context lists '윗-눈썹' as correct, so '눈썹' is acceptable. Then why is there a problem? Maybe I'm missing something else. Let me read the sentence again: \"초승달 같은 눈썹, 가늘고 긴 눈, 오똑한 코, 작고 예쁜 입 등 섬세한 이목구비가 우아한 인상을 준다.\"\n\nWait, the word '이목구비' is correct. But maybe the issue is with the use of '작고 예쁜 입'. The word '작고' is correct, and '예쁜' is also correct. \n\nWait, perhaps the problem is with the use of '가늘고 긴 눈'. The prefix '가늘' is correct. But in the context, there's a rule about when the stem or ending changes, they should be written as they are. For example, '둥글다' becomes '둥그니', etc. But the sentence uses '가늘고 긴 눈', which is correct. \n\nWait, maybe the problem is with the word '눈썹' using '눈' instead of '윗-'. Wait, the context says that '윗-눈썹' is correct, but the original sentence uses '눈썹'. So maybe the correct form should be '윗-눈썹'? But that doesn't make sense. Wait, the context says that '웃-' and '윗-' should be unified as '윗-'. So if any word has '웃-', it should be changed to '윗-'. But in the sentence, the word is '눈썹', which doesn't have '웃-' or '윗-'. So maybe there's no issue here. \n\nWait, maybe I'm missing something. Let me check the sentence again. The user might have made a mistake in the original sentence. Alternatively, maybe the problem is with the word '이목구비'. Let me check if that's a standard term. '이목구비' is a standard term meaning facial features. So that's okay. \n\nHmm, perhaps there's no error in the sentence. But the question says there is a part that doesn't follow the norms. Maybe I need to look again. Wait, the context mentions that when the same syllables repeat, they should be written with the same character. For example, '연연불망' is correct. But in the sentence, there's no repetition. \n\nWait, maybe the problem is with the use of '작고 예쁜 입'. '작고' is correct, but '예쁜' is also correct. No issues here. \n\nWait, perhaps the answer is that there are no errors, but the question says there is. Maybe I'm missing something. Let me check the context again. The context mentions that '웃-' should be changed to '윗-'. But the sentence doesn't have '웃-'. So maybe the answer is that there are no errors. But the question requires finding an error. \n\nAlternatively, maybe the problem is with the word '눈썹' being spelled as '눈썹' instead of '윗-눈썹'. But that's not correct because '눈썹' is the standard form. Wait, the context says that '윗-눈썹' is correct, but the original sentence uses '눈썹', which is the same as '윗-눈썹' without the '윗-'. Wait, no. Wait, the context says that '웃- 눈썹' should be changed to '윗- 눈썹'. But the original sentence uses '눈썹', which doesn't have '웃-' or '윗-'. So maybe there's no error here. \n\nWait, maybe the problem is with the word '가늘고 긴 눈'. The word '가늘' is correct, but '긴' is correct. No issues. \n\nI'm confused. Maybe the answer is that there are no errors, but the question says there is. Alternatively, maybe the user made a mistake in the question. But according to the context given, the only possible error would be if there's a '웃-' in the sentence. Since there isn't, I'm not sure. \n\nWait, maybe the answer is that the word '눈썹' should be '윗-눈썹', but that's not correct. Because '눈썹' is the standard form. The context says that '웃- 눈썹' should be '윗- 눈썹', but the original sentence doesn't have '웃-'. Therefore, the sentence is correct. \n\nBut the question says to find an error. Maybe I'm missing something else. Alternatively, perhaps the answer is that there are no errors. But the user might expect an answer based on the context. Maybe the answer is that there are no errors, but the question is designed to test the understanding that the sentence is correct. \n\nAlternatively, maybe the problem is with the use of '작고 예쁜 입' where '작고' is correct, but '예쁜' might be considered redundant. However, that's not a grammar rule. \n\nHmm, I think I need to conclude that there are no errors in the sentence according to the given context. But since the question insists there is an error, maybe I made a mistake. Let me check again. \n\nWait, the context says that '웃-' should be replaced with '윗-'. The original sentence has '눈썹' which doesn't have '웃-'. Therefore, there's no error. Therefore, the answer is that there are no errors. But the question says to find one. \n\nWait, maybe the answer is that the word '이목구비' should be '이목구비' but that's correct. \n\nI think the correct answer is that there are no errors in the sentence according to the given context. But since the user provided the context, maybe the answer is different. Alternatively, maybe the answer is that there's no error.\n</think>\n\n답변: 문장에서 어문 규범에 부합하지 않는 부분은 없으며, 모든 단어가 표준어로 적절히 사용되어 있습니다. 문장의 '눈썹', '가늘고 긴 눈', '오똑한 코', '작고 예쁜 입', '이목구비' 등은 문맥과 어휘 규칙에 맞춰 적절히 구성되어 있으며, '웃-' 또는 '윗-' 관련 통일 규정(예: '윗-눈썹')도 적용되지 않는 경우입니다. 따라서 문장은 어문 규범에 부합합니다.",
+    "context": [
+      {
+        "chunk_id": 495,
+        "content": "’웃-’ 및 ’윗-’은 명사 ’위’에 맞추어 ’윗-’으로 통일한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 윗-넓이, 윗-눈썹, 윗-니, 윗-당줄, 윗-덧줄, 윗-도리, 윗-동아리, 윗-막이, 윗-머리, 윗-목, 윗-몸, 윗-바람, 윗-배, 윗-벌, 윗-변, 윗-사랑, 윗-세장, 윗-수염, 윗-입술, 윗-잇몸, 윗-자리, 윗-중방",
+        "original_content": "’웃-’ 및 ’윗-’은 명사 ’위’에 맞추어 ’윗-’으로 통일한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 윗-넓이, 윗-눈썹, 윗-니, 윗-당줄, 윗-덧줄, 윗-도리, 윗-동아리, 윗-막이, 윗-머리, 윗-목, 윗-몸, 윗-바람, 윗-배, 윗-벌, 윗-변, 윗-사랑, 윗-세장, 윗-수염, 윗-입술, 윗-잇몸, 윗-자리, 윗-중방\n- ㄴ: 웃-넓이, 웃-눈썹, 웃-니, 웃-당줄, 웃-덧줄, 웃-도리, 웃-동아리, 웃-막이, 웃-머리, 웃-목, 웃-몸, 웃-바람, 웃-배, 웃-벌, 웃-변, 웃-사랑, 웃-세장, 웃-수염, 웃-입술, 웃-잇몸, 웃-자리, 웃-중방\n다만 1. 된소리나 거센소리 앞에서는 ’위-’로 한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 위-짝, 위-쪽, 위-채, 위-층, 위-치마, 위-턱, 위-팔\n- ㄴ: 웃-짝, 웃-쪽, 웃-채, 웃-층, 웃-치마, 웃-턱, 웃-팔\n다만 2. ’아래, 위’의 대립이 없는 단어는 ’웃-’으로 발음되는 형태를 표준어로 삼는다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 웃-국, 웃-기, 웃-돈, 웃-비, 웃-어른, 웃-옷\n- ㄴ: 윗-국, 윗-기, 윗-돈, 윗-비, 윗-어른, 윗-옷",
+        "length": 188,
+        "score": 0.5781627732739738,
+        "dense_score": 0.570985,
+        "sparse_score": 4.798159628349726,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 496,
+        "content": "’웃-’ 및 ’윗-’은 명사 ’위’에 맞추어 ’윗-’으로 통일한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄴ: 웃-넓이, 웃-눈썹, 웃-니, 웃-당줄, 웃-덧줄, 웃-도리, 웃-동아리, 웃-막이, 웃-머리, 웃-목, 웃-몸, 웃-바람, 웃-배, 웃-벌, 웃-변, 웃-사랑, 웃-세장, 웃-수염, 웃-입술, 웃-잇몸, 웃-자리, 웃-중방",
+        "original_content": "’웃-’ 및 ’윗-’은 명사 ’위’에 맞추어 ’윗-’으로 통일한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 윗-넓이, 윗-눈썹, 윗-니, 윗-당줄, 윗-덧줄, 윗-도리, 윗-동아리, 윗-막이, 윗-머리, 윗-목, 윗-몸, 윗-바람, 윗-배, 윗-벌, 윗-변, 윗-사랑, 윗-세장, 윗-수염, 윗-입술, 윗-잇몸, 윗-자리, 윗-중방\n- ㄴ: 웃-넓이, 웃-눈썹, 웃-니, 웃-당줄, 웃-덧줄, 웃-도리, 웃-동아리, 웃-막이, 웃-머리, 웃-목, 웃-몸, 웃-바람, 웃-배, 웃-벌, 웃-변, 웃-사랑, 웃-세장, 웃-수염, 웃-입술, 웃-잇몸, 웃-자리, 웃-중방\n다만 1. 된소리나 거센소리 앞에서는 ’위-’로 한다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 위-짝, 위-쪽, 위-채, 위-층, 위-치마, 위-턱, 위-팔\n- ㄴ: 웃-짝, 웃-쪽, 웃-채, 웃-층, 웃-치마, 웃-턱, 웃-팔\n다만 2. ’아래, 위’의 대립이 없는 단어는 ’웃-’으로 발음되는 형태를 표준어로 삼는다.(ㄱ을 표준어로 삼고, ㄴ을 버림.)\n- ㄱ: 웃-국, 웃-기, 웃-돈, 웃-비, 웃-어른, 웃-옷\n- ㄴ: 윗-국, 윗-기, 윗-돈, 윗-비, 윗-어른, 윗-옷",
+        "length": 188,
+        "score": 0.5780307532739738,
+        "dense_score": 0.5707964,
+        "sparse_score": 4.798159628349726,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 154,
+        "content": "다음과 같은 용언들은 어미가 바뀔 경우, 그 어간이나 어미가 원칙에 벗어나면 벗어나는 대로 적는다.\n- 곱다[麗]: 고와, 고와서, 고와도, 고왔다",
+        "original_content": "다음과 같은 용언들은 어미가 바뀔 경우, 그 어간이나 어미가 원칙에 벗어나면 벗어나는 대로 적는다.\n\n1. 어간의 끝 ’ㄹ’이 줄어질 적\n- 갈다: 가니, 간, 갑니다, 가시다, 가오\n- 놀다: 노니, 논, 놉니다, 노시다, 노오\n- 불다: 부니, 분, 붑니다, 부시다, 부오\n- 둥글다: 둥그니, 둥근, 둥급니다, 둥그시다, 둥그오\n- 어질다: 어지니, 어진, 어집니다, 어지시다, 어지오\n\n[붙임] 다음과 같은 말에서도 ‘ㄹ’이 준 대로 적는다.\n- 마지못하다, 마지않다, (하)다마다, (하)자마자, (하)지 마라, (하)지 마(아)\n\n2. 어간의 끝 ’ㅅ’이 줄어질 적\n- 긋다: 그어, 그으니, 그었다\n- 낫다: 나아, 나으니, 나았다\n- 잇다: 이어, 이으니, 이었다\n- 짓다: 지어, 지으니, 지었다\n\n3. 어간의 끝 ’ㅎ’이 줄어질 적\n- 그렇다: 그러니, 그럴, 그러면, 그러오\n- 까맣다: 까마니, 까말, 까마면, 까마오\n- 동그랗다: 동그라니, 동그랄, 동그라면, 동그라오\n- 퍼렇다: 퍼러니, 퍼럴, 퍼러면, 퍼러오\n- 하얗다: 하야니, 하얄, 하야면, 하야오\n\n4. 어간의 끝 ’ㅜ, ㅡ’가 줄어질 적\n- 푸다: 퍼, 폈다\n- 뜨다: 떠, 떴다\n- 끄다: 꺼, 껐다\n- 크다: 커, 컸다\n- 담그다: 담가, 담갔다\n- 고프다: 고파, 고팠다\n- 따르다: 따라, 따랐다\n- 바쁘다: 바빠, 바빴다\n\n5. 어간의 끝 ’ㄷ’이 ’ㄹ’로 바뀔 적\n- 걷다[步]: 걸어, 걸으니, 걸었다\n- 듣다[聽]: 들어, 들으니, 들었다\n- 묻다[問]: 물어, 물으니, 물었다\n- 싣다[載]: 실어, 실으니, 실었다\n\n6. 어간의 끝 ’ㅂ’이 ’ㅜ’로 바뀔 적\n- 깁다: 기워, 기우니, 기웠다\n- 굽다[炙]: 구워, 구우니, 구웠다\n- 가깝다: 가까워, 가까우니, 가까웠다\n- 괴롭다: 괴로워, 괴로우니, 괴로웠다\n- 맵다: 매워, 매우니, 매웠다\n- 무겁다: 무거워, 무거우니, 무거웠다\n- 밉다: 미워, 미우니, 미웠다\n- 쉽다: 쉬워, 쉬우니, 쉬웠다\n다만, ‘돕-, 곱-’과 같은 단음절 어간에 어미 ‘-아’가 결합되어 ‘와’로 소리 나는 것은 ‘-와’로 적는다. \n- 돕다[助]: 도와, 도와서, 도와도, 도왔다\n- 곱다[麗]: 고와, 고와서, 고와도, 고왔다\n\n7. ’하다’의 활용에서 어미 ’-아’가 ’-여’로 바뀔 적\n- 하다: 하여, 하여서, 하여도, 하여라, 하였다\n\n8. 어간의 끝음절 ’르’ 뒤에 오는 어미 ’-어’가 ’-러’로 바뀔 적\n- 이르다[至]: 이르러, 이르렀다\n- 노르다: 노르러, 노르렀다\n- 누르다: 누르러, 누르렀다\n- 푸르다: 푸르러, 푸르렀다\n\n9. 어간의 끝음절 ’르’의 ’ㅡ’가 줄고, 그 뒤에 오는 어미 ’-아/-어’가 ’-라/-러’로 바뀔 적\n- 가르다: 갈라, 갈랐다\n- 부르다: 불러, 불렀다\n- 거르다: 걸러, 걸렀다\n- 오르다: 올라, 올랐다\n- 구르다: 굴러, 굴렀다\n- 이르다: 일러, 일렀다\n- 벼르다: 별러, 별렀다\n- 지르다: 질러, 질렀다",
+        "length": 82,
+        "score": 0.48101620638497333,
+        "dense_score": 0.6114061,
+        "sparse_score": 1.4257355821842077,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 114,
+        "content": "다음과 같은 용언들은 어미가 바뀔 경우, 그 어간이나 어미가 원칙에 벗어나면 벗어나는 대로 적는다.\n- 둥글다: 둥그니, 둥근, 둥급니다, 둥그시다, 둥그오",
+        "original_content": "다음과 같은 용언들은 어미가 바뀔 경우, 그 어간이나 어미가 원칙에 벗어나면 벗어나는 대로 적는다.\n\n1. 어간의 끝 ’ㄹ’이 줄어질 적\n- 갈다: 가니, 간, 갑니다, 가시다, 가오\n- 놀다: 노니, 논, 놉니다, 노시다, 노오\n- 불다: 부니, 분, 붑니다, 부시다, 부오\n- 둥글다: 둥그니, 둥근, 둥급니다, 둥그시다, 둥그오\n- 어질다: 어지니, 어진, 어집니다, 어지시다, 어지오\n\n[붙임] 다음과 같은 말에서도 ‘ㄹ’이 준 대로 적는다.\n- 마지못하다, 마지않다, (하)다마다, (하)자마자, (하)지 마라, (하)지 마(아)\n\n2. 어간의 끝 ’ㅅ’이 줄어질 적\n- 긋다: 그어, 그으니, 그었다\n- 낫다: 나아, 나으니, 나았다\n- 잇다: 이어, 이으니, 이었다\n- 짓다: 지어, 지으니, 지었다\n\n3. 어간의 끝 ’ㅎ’이 줄어질 적\n- 그렇다: 그러니, 그럴, 그러면, 그러오\n- 까맣다: 까마니, 까말, 까마면, 까마오\n- 동그랗다: 동그라니, 동그랄, 동그라면, 동그라오\n- 퍼렇다: 퍼러니, 퍼럴, 퍼러면, 퍼러오\n- 하얗다: 하야니, 하얄, 하야면, 하야오\n\n4. 어간의 끝 ’ㅜ, ㅡ’가 줄어질 적\n- 푸다: 퍼, 폈다\n- 뜨다: 떠, 떴다\n- 끄다: 꺼, 껐다\n- 크다: 커, 컸다\n- 담그다: 담가, 담갔다\n- 고프다: 고파, 고팠다\n- 따르다: 따라, 따랐다\n- 바쁘다: 바빠, 바빴다\n\n5. 어간의 끝 ’ㄷ’이 ’ㄹ’로 바뀔 적\n- 걷다[步]: 걸어, 걸으니, 걸었다\n- 듣다[聽]: 들어, 들으니, 들었다\n- 묻다[問]: 물어, 물으니, 물었다\n- 싣다[載]: 실어, 실으니, 실었다\n\n6. 어간의 끝 ’ㅂ’이 ’ㅜ’로 바뀔 적\n- 깁다: 기워, 기우니, 기웠다\n- 굽다[炙]: 구워, 구우니, 구웠다\n- 가깝다: 가까워, 가까우니, 가까웠다\n- 괴롭다: 괴로워, 괴로우니, 괴로웠다\n- 맵다: 매워, 매우니, 매웠다\n- 무겁다: 무거워, 무거우니, 무거웠다\n- 밉다: 미워, 미우니, 미웠다\n- 쉽다: 쉬워, 쉬우니, 쉬웠다\n다만, ‘돕-, 곱-’과 같은 단음절 어간에 어미 ‘-아’가 결합되어 ‘와’로 소리 나는 것은 ‘-와’로 적는다. \n- 돕다[助]: 도와, 도와서, 도와도, 도왔다\n- 곱다[麗]: 고와, 고와서, 고와도, 고왔다\n\n7. ’하다’의 활용에서 어미 ’-아’가 ’-여’로 바뀔 적\n- 하다: 하여, 하여서, 하여도, 하여라, 하였다\n\n8. 어간의 끝음절 ’르’ 뒤에 오는 어미 ’-어’가 ’-러’로 바뀔 적\n- 이르다[至]: 이르러, 이르렀다\n- 노르다: 노르러, 노르렀다\n- 누르다: 누르러, 누르렀다\n- 푸르다: 푸르러, 푸르렀다\n\n9. 어간의 끝음절 ’르’의 ’ㅡ’가 줄고, 그 뒤에 오는 어미 ’-아/-어’가 ’-라/-러’로 바뀔 적\n- 가르다: 갈라, 갈랐다\n- 부르다: 불러, 불렀다\n- 거르다: 걸러, 걸렀다\n- 오르다: 올라, 올랐다\n- 구르다: 굴러, 굴렀다\n- 이르다: 일러, 일렀다\n- 벼르다: 별러, 별렀다\n- 지르다: 질러, 질렀다",
+        "length": 87,
+        "score": 0.45328766771544426,
+        "dense_score": 0.57372296,
+        "sparse_score": 1.389432386942715,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      },
+      {
+        "chunk_id": 816,
+        "content": "한 단어 안에서 같은 음절이나 비슷한 음절이 겹쳐 나는 부분은 같은 글자로 적는다.(ㄱ을 취하고, ㄴ을 버림.)\n- ㄱ: 딱딱, 쌕쌕, 씩씩, 똑딱똑딱, 쓱싹쓱싹, 연연불망(戀戀不忘), 유유상종(類類相從), 누누이(屢屢-), 꼿꼿하다, 놀놀하다, 눅눅하다, 밋밋하다, 싹싹하다, 쌉쌀하다, 씁쓸하다, 짭짤하다",
+        "original_content": "한 단어 안에서 같은 음절이나 비슷한 음절이 겹쳐 나는 부분은 같은 글자로 적는다.(ㄱ을 취하고, ㄴ을 버림.)\n- ㄱ: 딱딱, 쌕쌕, 씩씩, 똑딱똑딱, 쓱싹쓱싹, 연연불망(戀戀不忘), 유유상종(類類相從), 누누이(屢屢-), 꼿꼿하다, 놀놀하다, 눅눅하다, 밋밋하다, 싹싹하다, 쌉쌀하다, 씁쓸하다, 짭짤하다\n- ㄴ: 딱닥, 쌕색, 씩식, 똑닥똑닥, 쓱삭쓱삭, 연련불망, 유류상종, 누루이, 꼿곳하다, 놀롤하다, 눙눅하다, 민밋하다, 싹삭하다, 쌉살하다, 씁슬하다, 짭잘하다",
+        "length": 172,
+        "score": 0.4507094403385968,
+        "dense_score": 0.5610462,
+        "sparse_score": 1.558683701544475,
+        "embedding_dim": 1024,
+        "search_type": "hybrid"
+      }
+    ],
+    "search_type": "hybrid",
+    "search_params": {
+      "top_k": 5,
+      "alpha": 0.7,
+      "temperature": 0.7
+    },
+    "processing_time": 437.5577824115753,
+    "original_data": {
+      "question_type": "서술형",
+      "question": "다음 문장에서 어문 규범에 부합하지 않는 부분을 찾아 고치고, 그 이유를 설명하세요.\n\"또한 갸름한 얼굴에 초승달 같은 눈썹, 가늘고 긴 눈, 오똑한 코, 작고 예쁜 입 등 섬세한 이목구비가 우아한 인상을 준다.\"",
+      "id": "2"
+    },
+    "generated_prompt": "[질문]을 잘 읽고 답변을 생성하시오. 문제를 그대로 출력하지 마시오.\n[지침]\n질문에 대한 답변을 완성된 문장으로 서술하시오.\n\n[예시]\n질문: 대한민국의 행정구역 체계를 서술하세요.\n답변: 대한민국의 행정구역은 여러 종류의 지역 단위로 나뉘어 구성되어 있으며, 먼저 특별시와 광역시부터 살펴볼 수 있다. 특별시로는 수도인 서울특별시가 있으며, 광역시에는 인천광역시, 부산광역시, 대전광역시, 광주광역시, 대구광역시, 울산광역시 등이 포함된다. 이 외에도 대한민국은 일반 도 단위로 6개의 도를 두고 있는데, 그 이름은 경기도, 충청북도, 충청남도, 전라남도, 경상북도, 경상남도로 구성되어 있다. 특별한 자치권을 부여받은 도인 특별자치도로는 제주특별자치도, 전북특별자치도, 강원특별자치도가 있다. 마지막으로 특별자치시로는 세종특별자치시가 존재한다.\n\n[기타 정보]\n- id: 2\n\n[질문]\n다음 문장에서 어문 규범에 부합하지 않는 부분을 찾아 고치고, 그 이유를 설명하세요.\n\"또한 갸름한 얼굴에 초승달 같은 눈썹, 가늘고 긴 눈, 오똑한 코, 작고 예쁜 입 등 섬세한 이목구비가 우아한 인상을 준다.\""
+  }
+]
