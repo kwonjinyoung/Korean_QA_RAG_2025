@@ -57,7 +57,7 @@ class ModelArguments:
     @dataclass 데코레이터를 사용하여 자동으로 __init__, __repr__ 등 메서드 생성
     """
     model_name_or_path: Optional[str] = field(
-        default="Qwen/Qwen3-32B",  # 기본값: Qwen 3-32B 모델
+        default="Qwen/Qwen3-8B",  # 기본값: Qwen 3-8B 모델
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     config_name: Optional[str] = field(
@@ -125,7 +125,7 @@ class DataArguments:
         metadata={"help": "Path to the validation data file"}
     )
     max_seq_length: int = field(
-        default=2048,  # 최대 시퀀스 길이 (토큰 개수)
+        default=4096,  # 최대 시퀀스 길이 (토큰 개수)
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."}
     )
     preprocessing_num_workers: Optional[int] = field(
@@ -150,11 +150,11 @@ class LoraArguments:
         metadata={"help": "Whether to use LoRA for parameter efficient fine-tuning"}
     )
     lora_r: int = field(
-        default=32,  # LoRA rank (낮을수록 파라미터 수 적음, 높을수록 표현력 증가)
+        default=64,  # LoRA rank (낮을수록 파라미터 수 적음, 높을수록 표현력 증가)
         metadata={"help": "LoRA attention dimension"}
     )
     lora_alpha: int = field(
-        default=64,  # LoRA 스케일링 파라미터 (보통 rank의 2배로 설정)
+        default=128,  # LoRA 스케일링 파라미터 (보통 rank의 2배로 설정)
         metadata={"help": "LoRA scaling parameter"}
     )
     lora_dropout: float = field(

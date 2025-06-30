@@ -86,17 +86,17 @@ app.add_middleware(
 MODEL = None
 TOKENIZER = None
 MODEL_CONFIG = {
-    "name": "qwen3-32b-korean-qa",
-    "base_model": "Qwen/Qwen3-32B",
-    "peft_model": "./results/qwen3-32b-4bit-korean-qa-improved/checkpoint-160",
-    "use_4bit_quantization": True,
+    "name": "qwen3-8b-korean-qa",
+    "base_model": "Qwen/Qwen3-8B",  # 8B 모델로 변경
+    "peft_model": "./results/qwen3-8b-16bit-lora-korean-qa-improved-test-dev-all-data/checkpoint-100",  # 새 체크포인트 경로
+    "use_4bit_quantization": False,  # 16bit LoRA 사용
     "default_temperature": 0.7,
     "default_top_p": 0.9,
     "default_max_tokens": 512
 }
 
 class KoreanQAServer:
-    def __init__(self, base_url: str = "http://localhost:11434", model_name: str = "qwen3:32b"):
+    def __init__(self, base_url: str = "http://localhost:11435", model_name: str = "qwen3:8b"):
         self.base_url = base_url
         self.model_name = model_name
         self.chat_url = f"{base_url}/api/chat"
@@ -110,7 +110,7 @@ class KoreanQAServer:
         if MODEL is None or TOKENIZER is None:
             logger.info("모델 로딩을 시작합니다...")
             try:
-                # 환경 변수 설정 (run_inference.sh와 동일)
+                # 환경 변수 설정 (run_server.sh와 동일)
                 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
                 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
                 
@@ -129,7 +129,7 @@ class KoreanQAServer:
         return MODEL, TOKENIZER
 
 # 서버 인스턴스 생성
-server = KoreanQAServer()
+server = KoreanQAServer(base_url="http://localhost:11435", model_name="qwen3:8b")
 
 @app.on_event("startup")
 async def startup_event():
@@ -155,7 +155,7 @@ async def get_models():
                 name=MODEL_CONFIG["name"],
                 base_model=MODEL_CONFIG["base_model"],
                 peft_model=MODEL_CONFIG["peft_model"],
-                quantization="4bit" if MODEL_CONFIG["use_4bit_quantization"] else "none",
+                quantization="4bit" if MODEL_CONFIG["use_4bit_quantization"] else "16bit",
                 status="loaded" if server.model_loaded else "loading"
             )
         ]
@@ -269,7 +269,7 @@ async def health_check():
     }
 
 # 개발용 실행 함수
-def run_server(host: str = "0.0.0.0", port: int = 11434, reload: bool = False):
+def run_server(host: str = "0.0.0.0", port: int = 11435, reload: bool = False):
     """개발 서버를 실행합니다."""
     uvicorn.run(
         "server:app",
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Korean QA RAG API Server")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="서버 호스트")
-    parser.add_argument("--port", type=int, default=11434, help="서버 포트")
+    parser.add_argument("--port", type=int, default=11435, help="서버 포트")
     parser.add_argument("--reload", action="store_true", help="개발 모드 (자동 재시작)")
     
     args = parser.parse_args()
