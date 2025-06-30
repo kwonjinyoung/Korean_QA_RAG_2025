@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+항상 uv 패키지 관리 라이브러리를 사용 하시오
+.venv 가상환경을 사용 하시오
