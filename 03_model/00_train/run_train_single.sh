@@ -57,7 +57,7 @@ uv run python train.py \
     --save_total_limit 2 \
     --logging_steps 10 \
     --logging_dir ./logs \
-    --num_train_epochs 5 \
+    --num_train_epochs 10 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 32 \

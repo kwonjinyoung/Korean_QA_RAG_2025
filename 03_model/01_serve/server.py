@@ -87,9 +87,9 @@ MODEL = None
 TOKENIZER = None
 MODEL_CONFIG = {
     "name": "qwen3-8b-korean-qa",
-    "base_model": "Qwen/Qwen3-8B",  # 8B 모델로 변경
-    "peft_model": "./results/qwen3-8b-16bit-lora-korean-qa-improved-test-dev-all-data/checkpoint-100",  # 새 체크포인트 경로
-    "use_4bit_quantization": False,  # 16bit LoRA 사용
+    "base_model": "Qwen/Qwen3-8B",
+    "peft_model": "../00_train/results/qwen3-8b-4bit-lora-korean-qa-rag/checkpoint-110",  # 파인튜닝된 모델 경로
+    "use_4bit_quantization": True,  # 파인튜닝할 때와 동일하게 4bit 양자화 사용
     "default_temperature": 0.7,
     "default_top_p": 0.9,
     "default_max_tokens": 512
@@ -232,7 +232,7 @@ async def generate(request: GenerateRequest):
             prompt = create_prompt(
                 request.question_type, 
                 request.prompt, 
-                request.other_info
+                request.other_info if request.other_info is not None else {}
             )
         else:
             # 이미 형식화된 프롬프트 사용
