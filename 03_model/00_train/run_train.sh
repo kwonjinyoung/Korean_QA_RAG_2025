@@ -29,9 +29,9 @@ echo "훈련 시작 시간: $(date)"
 echo "모델: Qwen3-8B (16bit LoRA)"
 echo "목표: Loss 0.05 이하까지 훈련 (수동 모니터링 필요)"
 echo "GPU: RTX A6000 2장 분산 훈련"
-echo "배치 사이즈: 8 (per_device_train_batch_size=4 × 2 GPU)"
-echo "그라디언트 누적 단계: 4 (총 유효 배치 사이즈: 32)"
-echo "시퀀스 길이: 2048"
+echo "배치 사이즈: 4 (per_device_train_batch_size=2 × 2 GPU)"
+echo "그라디언트 누적 단계: 4 (총 유효 배치 사이즈: 16)"
+echo "시퀀스 길이: 4096"
 echo "메모리 최적화: gradient_checkpointing 활성화"
 echo "========================================="
 
@@ -50,7 +50,7 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --save_total_limit 2 \
     --logging_steps 10 \
     --logging_dir ./logs \
-    --num_train_epochs 5 \
+    --num_train_epochs 10 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 4 \
@@ -78,7 +78,9 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --greater_is_better false \
     --validation_split_percentage 10 \
     --gradient_checkpointing true \
-    --load_best_model_at_end true
+    --load_best_model_at_end true \
+    --early_stopping_patience 5 \
+    --early_stopping_threshold 0.05
 
 echo ""
 echo "========================================="
@@ -86,9 +88,9 @@ echo "훈련 완료 시간: $(date)"
 echo "주의: 0.05 loss 달성을 위해 tensorboard 로그를 모니터링하고"
 echo "eval_loss가 0.05 이하가 되면 수동으로 중단하세요"
 echo "8B 모델 16bit LoRA + RTX A6000 2장 분산 훈련으로 메모리 효율성 및 훈련 속도가 최적화되었습니다"
-echo "배치 사이즈: 8 (per_device_train_batch_size=4 × 2 GPU)"
-echo "그라디언트 누적 단계: 4 (총 유효 배치 사이즈: 32)"
-echo "시퀀스 길이: 2048 (메모리 절약을 위해 4096에서 축소)"
+echo "배치 사이즈: 4 (per_device_train_batch_size=2 × 2 GPU)"
+echo "그라디언트 누적 단계: 4 (총 유효 배치 사이즈: 16)"
+echo "시퀀스 길이: 4096"
 echo "메모리 최적화: gradient_checkpointing 활성화"
 echo "Training Completed!"
 echo "=========================================" 
