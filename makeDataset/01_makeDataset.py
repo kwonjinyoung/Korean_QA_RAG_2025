@@ -8,12 +8,12 @@ def read_file_content(file_path):
 
 def main():
     # 필요한 파일 경로 설정
-    train_data_path = "makeDataset/processed_train_data.json"
-    instruction_path = "prompt/00_prompt_Instruction.md"
-    context_path = "prompt/01_prompt_context.md"
-    correction_path = "prompt/02_prompt_few_shot_교정형.md"
-    selection_path = "prompt/02_prompt_few_shot_선택형.md"
-    output_path = "makeDataset/final_dataset.json"
+    train_data_path = "processed_train_data.json"
+    instruction_path = "../prompt/00_prompt_Instruction.md"
+    context_path = "../prompt/01_prompt_context.md"
+    correction_path = "../prompt/02_prompt_few_shot_교정형.md"
+    selection_path = "../prompt/02_prompt_few_shot_선택형.md"
+    output_path = "final_dataset.json"
     
     # 파일 내용 읽기
     instruction = read_file_content(instruction_path)

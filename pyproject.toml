@@ -21,6 +21,7 @@ dependencies = [
     "requests>=2.32.4",
     "scikit-learn>=1.7.0",
     "tqdm>=4.67.1",
+    "transformers>=4.53.0",
     "uvicorn>=0.34.3",
 ]
 
