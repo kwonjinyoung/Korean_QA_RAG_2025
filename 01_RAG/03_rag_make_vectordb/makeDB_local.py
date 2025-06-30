@@ -63,7 +63,7 @@ def setup_qdrant_hybrid_vectorstore():
     
     # 3. Qdrant 클라이언트 생성 (로컬 저장소)
     print("Qdrant 클라이언트 생성 중...")
-    client = QdrantClient(path="./qdrant_local_db")
+    client = QdrantClient(path="../../qdrant_local_db")
     
     collection_name = "korean_qa_hybrid"
     

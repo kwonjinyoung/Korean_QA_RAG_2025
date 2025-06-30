@@ -15,7 +15,7 @@ from langchain_core.documents import Document
 from langchain_qdrant import RetrievalMode, FastEmbedSparse
 
 
-def load_train_data(file_path: str = "../RAG/resource/korean_language_rag_V1.0_train.json") -> List[Dict]:
+def load_train_data(file_path: str = "../resource/korean_language_rag_V1.0_train.json") -> List[Dict]:
     """한국어 QA 트레이닝 데이터를 로드합니다."""
     print("📚 한국어 QA 트레이닝 데이터 로드 중...")
     
@@ -46,7 +46,7 @@ def load_vectorstore():
     print("🔄 기존 Qdrant 벡터스토어 로드 중...")
     
     # DB 경로 확인
-    db_path = "../RAG/03_rag_make_vectordb/qdrant_local_db"
+    db_path = "../qdrant_local_db"
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Qdrant DB가 존재하지 않습니다: {db_path}")
     
