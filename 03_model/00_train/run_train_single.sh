@@ -51,9 +51,9 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --logging_steps 10 \
     --logging_dir ./logs \
     --num_train_epochs 5 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 4 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 1 \
     --learning_rate 1e-4 \
     --weight_decay 0.01 \
     --warmup_ratio 0.03 \
