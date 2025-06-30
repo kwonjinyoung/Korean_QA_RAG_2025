@@ -16,7 +16,7 @@ echo ""
 
 # 필요한 Python 패키지 설치 (처음 실행시)
 echo "필요한 패키지를 확인하고 설치합니다..."
-pip install fastapi uvicorn python-multipart
+pip install fastapi uvicorn python-multipart peft bitsandbytes
 
 # 서버 실행
 uv run python server.py \
