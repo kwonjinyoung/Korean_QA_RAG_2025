@@ -513,9 +513,9 @@ class QuestionPromptGenerator:
         return chat
 
 class OllamaQwenChat:
-    """Ollama Qwen3:8b-fp16 모델을 사용한 채팅 클래스"""
+    """Ollama qwen3:14b 모델을 사용한 채팅 클래스"""
     
-    def __init__(self, base_url: str = "http://localhost:11434", model_name: str = "qwen3:8b-fp16"):
+    def __init__(self, base_url: str = "http://localhost:11434", model_name: str = "qwen3:14b"):
         self.base_url = base_url
         self.model_name = model_name
         self.chat_url = f"{base_url}/api/chat"
@@ -621,7 +621,7 @@ class KoreanRAGSystem:
         qdrant_port: int = 6333,
         ollama_host: str = "localhost",
         ollama_port: int = 11434,
-        llm_model: str = "qwen3:8b-fp16"
+        llm_model: str = "qwen3:14b"
     ):
         """
         RAG 시스템 초기화
