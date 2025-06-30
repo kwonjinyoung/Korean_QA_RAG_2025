@@ -43,9 +43,9 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --overwrite_output_dir \
     --do_train \
     --do_eval \
-    --eval_strategy "steps" \
+    --eval_strategy steps \
     --eval_steps 100 \
-    --save_strategy "steps" \
+    --save_strategy steps \
     --save_steps 100 \
     --save_total_limit 2 \
     --logging_steps 10 \
@@ -77,7 +77,8 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --metric_for_best_model eval_loss \
     --greater_is_better false \
     --validation_split_percentage 10 \
-    --gradient_checkpointing true
+    --gradient_checkpointing true \
+    --load_best_model_at_end true
 
 echo ""
 echo "========================================="
