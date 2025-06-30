@@ -1,0 +1,20 @@
+# 텍스트 평가 모듈 의존성
+
+# BERTScore를 위한 라이브러리
+bert-score>=0.3.13
+
+# ROUGE 점수 계산을 위한 라이브러리
+rouge-score>=0.1.2
+
+# BLEURT 평가를 위한 라이브러리 (선택사항)
+# 복잡한 설치 과정으로 인해 주석 처리
+# 대신 의미적 유사도 지표를 사용
+# bleurt @ git+https://github.com/google-research/bleurt.git
+
+# 기타 필요한 라이브러리
+torch>=1.7.0
+transformers>=4.0.0
+numpy>=1.19.0
+
+# 추가된 의존성
+# rouge-score는 이미 위에 포함됨 
