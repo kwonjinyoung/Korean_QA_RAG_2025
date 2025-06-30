@@ -1,0 +1,41 @@
+[project]
+name = "korean-qa-rag-2025"
+version = "0.1.0"
+description = "Korean QA RAG fine-tuning project"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.8.0",
+    "bitsandbytes>=0.46.0",
+    "datasets>=3.6.0",
+    "einops>=0.8.1",
+    "matplotlib>=3.10.3",
+    "pandas>=2.3.0",
+    "peft>=0.15.2",
+    "scipy>=1.15.3",
+    "seaborn>=0.13.2",
+    "sentencepiece>=0.2.0",
+    "tensorboard>=2.19.0",
+    "torch>=2.7.1",
+    "transformers>=4.52.4",
+    "trl>=0.18.2",
+    "wandb>=0.20.1",
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
+    "qdrant-client>=1.11.0",
+    "sentence-transformers>=3.0.0",
+    "pypdf>=4.0.0",
+    "pymupdf>=1.24.0",
+    "FlagEmbedding>=1.2.0",
+    "fastapi>=0.115.13",
+    "uvicorn>=0.34.3",
+    "python-multipart>=0.0.20",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "run"]
