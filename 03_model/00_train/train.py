@@ -37,9 +37,6 @@ from transformers.trainer_utils import get_last_checkpoint  # 마지막 체크�
 from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_training
 import wandb  # 실험 추적 도구 (Weights & Biases)
 
-# 사용자 정의 데이터 처리 모듈
-from src.data import CustomDataset, DataCollatorForSupervisedDataset
-
 # 불필요한 경고 메시지 숨기기
 warnings.filterwarnings("ignore", category=FutureWarning)  # 미래 버전 관련 경고
 warnings.filterwarnings("ignore", category=UserWarning)  # 사용자 경고
@@ -120,11 +117,11 @@ class DataArguments:
     훈련/검증 데이터 경로, 최대 시퀀스 길이 등을 설정
     """
     train_data_path: str = field(
-        default="resource/RAG/korean_language_rag_V1.0_train.json",  # 훈련 데이터 파일 경로
+        default="02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 파일 경로 수정
         metadata={"help": "Path to the training data file"}
     )
     val_data_path: Optional[str] = field(
-        default="resource/RAG/korean_language_rag_V1.0_dev.json",  # 검증 데이터 파일 경로
+        default=None,  # 검증 데이터 별도 지정 안함
         metadata={"help": "Path to the validation data file"}
     )
     max_seq_length: int = field(
@@ -134,6 +131,10 @@ class DataArguments:
     preprocessing_num_workers: Optional[int] = field(
         default=None,  # 전처리용 워커 수 (기본값: CPU 코어 수)
         metadata={"help": "The number of processes to use for the preprocessing."}
+    )
+    validation_split_percentage: Optional[int] = field(
+        default=10,  # 검증 데이터 분할 비율 (10%)
+        metadata={"help": "The percentage of the train set used as validation set in case there's no validation split"}
     )
 
 
@@ -311,6 +312,98 @@ def apply_lora(model, lora_args: LoraArguments):
     return model
 
 
+class CustomDataset(torch.utils.data.Dataset):
+    """
+    한국어 QA RAG 데이터셋을 위한 사용자 정의 데이터셋 클래스
+    
+    데이터 구조:
+    [
+      {
+        "question": "Instruction:\n...\n질문: ...",
+        "answer": "..."
+      },
+      ...
+    ]
+    """
+    def __init__(self, data_path, tokenizer, max_length=2048):
+        """
+        데이터셋 초기화
+        
+        Args:
+            data_path: 데이터 파일 경로
+            tokenizer: 토크나이저 객체
+            max_length: 최대 시퀀스 길이
+        """
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        
+        # JSON 파일에서 데이터 로드
+        with open(data_path, 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
+        
+        logger.info(f"{data_path}에서 {len(self.data)} 개의 데이터를 로드했습니다.")
+    
+    def __len__(self):
+        """데이터셋 길이 반환"""
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        """
+        인덱스에 해당하는 데이터 항목 반환
+        
+        Args:
+            idx: 데이터 인덱스
+            
+        Returns:
+            dict: 토큰화된 입력 및 라벨
+        """
+        item = self.data[idx]
+        question = item["question"]
+        answer = item["answer"]
+        
+        # 입력 형식: 질문 + 답변
+        full_text = f"{question}{answer}"
+        
+        # 토큰화
+        encodings = self.tokenizer(
+            full_text,
+            max_length=self.max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt"
+        )
+        
+        # 배치 차원 제거
+        input_ids = encodings.input_ids.squeeze(0)
+        attention_mask = encodings.attention_mask.squeeze(0)
+        
+        # 라벨 설정 (입력과 동일, 언어 모델링 목적)
+        labels = input_ids.clone()
+        
+        # 패딩 토큰에 대한 라벨은 -100으로 설정 (손실 계산에서 무시됨)
+        padding_mask = attention_mask == 0
+        labels[padding_mask] = -100
+        
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels
+        }
+
+class DataCollatorForSupervisedDataset(DataCollatorForLanguageModeling):
+    """
+    지도 학습용 데이터 콜레이터
+    배치 내 시퀀스들을 패딩하고 적절한 형태로 변환
+    """
+    def __init__(self, tokenizer):
+        super().__init__(tokenizer=tokenizer, mlm=False)
+    
+    def __call__(self, examples):
+        # 배치를 구성하는 예제들을 하나의 텐서로 변환
+        batch = super().__call__(examples)
+        return batch
+
+
 def setup_datasets(data_args: DataArguments, tokenizer):
     """
     훈련 및 검증 데이터셋을 설정하는 함수
@@ -324,16 +417,34 @@ def setup_datasets(data_args: DataArguments, tokenizer):
     """
     
     # 훈련 데이터셋 생성
-    # CustomDataset은 src/data.py에 정의된 사용자 정의 데이터셋 클래스
-    train_dataset = CustomDataset(data_args.train_data_path, tokenizer)
+    train_dataset = CustomDataset(data_args.train_data_path, tokenizer, max_length=data_args.max_seq_length)
     logger.info(f"훈련 데이터셋 크기: {len(train_dataset)}")
     
-    # 검증 데이터셋 생성 (선택사항)
-    # 검증 데이터 경로가 지정되고 파일이 존재하는 경우에만 생성
+    # 검증 데이터셋 생성
     eval_dataset = None
+    
+    # 검증 데이터 경로가 지정된 경우 해당 파일에서 로드
     if data_args.val_data_path and os.path.exists(data_args.val_data_path):
-        eval_dataset = CustomDataset(data_args.val_data_path, tokenizer)
+        eval_dataset = CustomDataset(data_args.val_data_path, tokenizer, max_length=data_args.max_seq_length)
         logger.info(f"검증 데이터셋 크기: {len(eval_dataset)}")
+    # 검증 데이터 경로가 없는 경우 훈련 데이터에서 일부를 분할
+    elif data_args.validation_split_percentage > 0:
+        logger.info(f"별도의 검증 데이터가 없어 훈련 데이터의 {data_args.validation_split_percentage}%를 검증 데이터로 사용합니다.")
+        
+        # 데이터셋 크기 계산
+        dataset_size = len(train_dataset)
+        val_size = int(dataset_size * data_args.validation_split_percentage / 100)
+        train_size = dataset_size - val_size
+        
+        # 데이터셋 분할
+        train_dataset, eval_dataset = torch.utils.data.random_split(
+            train_dataset, 
+            [train_size, val_size],
+            generator=torch.Generator().manual_seed(42)  # 재현성을 위한 시드 설정
+        )
+        
+        logger.info(f"훈련 데이터셋 크기(분할 후): {len(train_dataset)}")
+        logger.info(f"검증 데이터셋 크기(분할 후): {len(eval_dataset)}")
     
     return train_dataset, eval_dataset
 
@@ -504,8 +615,8 @@ def create_training_config():
         "bnb_4bit_use_double_quant": True,  # 이중 양자화 사용
         
         # 데이터 관련 설정
-        "train_data_path": "resource/RAG/korean_language_rag_V1.0_train.json",  # 훈련 데이터
-        "val_data_path": "resource/RAG/korean_language_rag_V1.0_dev.json",  # 검증 데이터
+        "train_data_path": "02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 경로 수정
+        "val_data_path": None,  # 검증 데이터는 훈련 데이터에서 분할
         "max_seq_length": 2048,  # 최대 시퀀스 길이
         
         # 출력 및 로깅 설정
