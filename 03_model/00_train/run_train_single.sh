@@ -64,7 +64,7 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --report_to tensorboard \
     --run_name korean-qa-rag-finetune \
     --use_lora \
-    --lora_r 64 \
+    --lora_r 512 \
     --lora_alpha 128 \
     --lora_dropout 0.05 \
     --lora_target_modules q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj \
