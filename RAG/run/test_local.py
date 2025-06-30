@@ -6,7 +6,11 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import requests
 
-# Qdrant 및 RAG 관련 모듈을 직접 포함
+# Qdrant 로컬 모드를 위한 라이브러리
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
+
+# ARM64 호환성을 위한 라이브러리 선택
 import re
 from rank_bm25 import BM25Okapi
 
@@ -14,84 +18,7 @@ from rank_bm25 import BM25Okapi
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Qdrant 관련 클래스들
-class QdrantHTTPClient:
-    """Qdrant HTTP API 클라이언트 (ARM64 호환)"""
-    
-    def __init__(self, host: str = "localhost", port: int = 6333):
-        self.base_url = f"http://{host}:{port}"
-        self.session = requests.Session()
-        
-    def _make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
-        """HTTP 요청 실행"""
-        url = f"{self.base_url}{endpoint}"
-        try:
-            if method.upper() == "GET":
-                response = self.session.get(url, timeout=60)
-            elif method.upper() == "POST":
-                response = self.session.post(url, json=data, timeout=60)
-            elif method.upper() == "PUT":
-                response = self.session.put(url, json=data, timeout=60)
-            elif method.upper() == "DELETE":
-                response = self.session.delete(url, timeout=60)
-            else:
-                raise ValueError(f"지원하지 않는 HTTP 메서드: {method}")
-                
-            response.raise_for_status()
-            return response.json()
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Qdrant HTTP API 요청 실패: {e}")
-            raise
-    
-    def get_collections(self) -> Dict:
-        """컬렉션 목록 조회"""
-        return self._make_request("GET", "/collections")
-    
-    def create_collection(self, collection_name: str, vector_size: int) -> Dict:
-        """컬렉션 생성"""
-        config = {
-            "vectors": {
-                "size": vector_size,
-                "distance": "Cosine"
-            },
-            "hnsw_config": {
-                "m": 16,
-                "ef_construct": 200
-            },
-            "optimizers_config": {
-                "default_segment_number": 2,
-                "max_segment_size": 20000,
-                "memmap_threshold": 20000,
-                "indexing_threshold": 20000,
-                "flush_interval_sec": 5,
-                "max_optimization_threads": 2
-            }
-        }
-        return self._make_request("PUT", f"/collections/{collection_name}", config)
-    
-    def delete_collection(self, collection_name: str) -> Dict:
-        """컬렉션 삭제"""
-        return self._make_request("DELETE", f"/collections/{collection_name}")
-    
-    def get_collection_info(self, collection_name: str) -> Dict:
-        """컬렉션 정보 조회"""
-        return self._make_request("GET", f"/collections/{collection_name}")
-    
-    def upsert_points(self, collection_name: str, points: List[Dict]) -> Dict:
-        """포인트 업서트"""
-        data = {"points": points}
-        return self._make_request("PUT", f"/collections/{collection_name}/points", data)
-    
-    def search_points(self, collection_name: str, query_vector: List[float], 
-                     limit: int = 10, with_payload: bool = True) -> Dict:
-        """포인트 검색"""
-        data = {
-            "vector": query_vector,
-            "limit": limit,
-            "with_payload": with_payload
-        }
-        return self._make_request("POST", f"/collections/{collection_name}/points/search", data)
+# 로컬 Qdrant DB 관련 클래스들
 
 class SimpleBM25Wrapper:
     """rank_bm25를 사용한 BM25 래퍼 클래스 (ARM64 호환)"""
@@ -161,14 +88,13 @@ class OllamaBGEEmbedder:
             logger.error(f"임베딩 생성 중 오류 발생: {e}")
             return None
 
-class KoreanRAGVectorDB:
-    """HTTP API를 사용한 ARM64 호환 한국어 RAG 하이브리드 Qdrant 벡터 데이터베이스"""
+class KoreanRAGVectorDB_Local:
+    """로컬 파일 시스템 기반 한국어 RAG 하이브리드 Qdrant 벡터 데이터베이스"""
     
     def __init__(
         self,
-        collection_name: str = "korean_rag_http_collection",
-        qdrant_host: str = "localhost",
-        qdrant_port: int = 6333,
+        collection_name: str = "korean_rag_local_collection",
+        db_path: str = "./qdrant_storage",
         ollama_host: str = "localhost",
         ollama_port: int = 11434
     ):
@@ -177,12 +103,15 @@ class KoreanRAGVectorDB:
         
         Args:
             collection_name: Qdrant 컬렉션 이름
-            qdrant_host: Qdrant 서버 호스트
-            qdrant_port: Qdrant 서버 포트
+            db_path: Qdrant 로컬 데이터베이스 저장 경로
             ollama_host: Ollama 서버 호스트
             ollama_port: Ollama 서버 포트
         """
         self.collection_name = collection_name
+        self.db_path = Path(db_path)
+        
+        # 로컬 DB 저장 디렉토리 생성
+        self.db_path.mkdir(parents=True, exist_ok=True)
         
         # Ollama BGE-M3 임베더 초기화
         ollama_base_url = f"http://{ollama_host}:{ollama_port}"
@@ -191,15 +120,13 @@ class KoreanRAGVectorDB:
         # ARM64 호환 BM25 모델 초기화
         self.bm25_wrapper = SimpleBM25Wrapper()
         
-        # Qdrant HTTP 클라이언트 초기화
+        # Qdrant 로컬 클라이언트 초기화
         try:
-            self.client = QdrantHTTPClient(host=qdrant_host, port=qdrant_port)
-            # 연결 테스트
-            collections = self.client.get_collections()
-            logger.info(f"✅ Qdrant HTTP API 연결 성공: {qdrant_host}:{qdrant_port}")
+            self.client = QdrantClient(path=str(self.db_path))
+            logger.info(f"✅ Qdrant 로컬 모드 초기화 성공: {self.db_path}")
         except Exception as e:
-            logger.error(f"❌ Qdrant HTTP API 연결 실패: {e}")
-            raise ConnectionError(f"Qdrant HTTP API에 연결할 수 없습니다: {qdrant_host}:{qdrant_port}")
+            logger.error(f"❌ Qdrant 로컬 모드 초기화 실패: {e}")
+            raise ConnectionError(f"Qdrant 로컬 모드를 초기화할 수 없습니다: {self.db_path}")
         
         # Ollama BGE-M3 모델 연결 확인 및 벡터 차원 확인
         self.dense_vector_size = self._check_ollama_model()
@@ -232,14 +159,14 @@ class KoreanRAGVectorDB:
         """Qdrant 컬렉션 초기화 (기존 컬렉션 확인 후 생성 또는 로드)"""
         try:
             # 기존 컬렉션 확인
-            collections_response = self.client.get_collections()
-            collection_names = [col["name"] for col in collections_response["result"]["collections"]]
+            collections = self.client.get_collections()
+            collection_names = [col.name for col in collections.collections]
             
             if self.collection_name in collection_names:
                 # 기존 컬렉션 로드
                 logger.info(f"📂 기존 컬렉션 '{self.collection_name}' 로드")
-                collection_info = self.client.get_collection_info(self.collection_name)
-                points_count = collection_info["result"]["points_count"]
+                collection_info = self.client.get_collection(self.collection_name)
+                points_count = collection_info.points_count
                 logger.info(f"✅ 기존 컬렉션 로드 완료: {points_count}개 벡터")
                 
                 # 기존 데이터로 BM25 초기화
@@ -247,12 +174,27 @@ class KoreanRAGVectorDB:
             else:
                 # 새 컬렉션 생성
                 logger.info(f"🆕 새 컬렉션 '{self.collection_name}' 생성")
-                response = self.client.create_collection(self.collection_name, self.dense_vector_size)
-                
-                if response["status"] == "ok":
-                    logger.info(f"✅ 컬렉션 '{self.collection_name}' 생성 완료")
-                else:
-                    raise Exception(f"컬렉션 생성 실패: {response}")
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(
+                        size=self.dense_vector_size, 
+                        distance=Distance.COSINE
+                    ),
+                    # 성능 최적화 설정
+                    hnsw_config={
+                        "m": 16,
+                        "ef_construct": 200
+                    },
+                    optimizers_config={
+                        "default_segment_number": 2,
+                        "max_segment_size": 20000,
+                        "memmap_threshold": 20000,
+                        "indexing_threshold": 20000,
+                        "flush_interval_sec": 5,
+                        "max_optimization_threads": 2
+                    }
+                )
+                logger.info(f"✅ 컬렉션 '{self.collection_name}' 생성 완료")
             
         except Exception as e:
             logger.error(f"❌ 컬렉션 초기화 실패: {e}")
@@ -314,15 +256,13 @@ class KoreanRAGVectorDB:
                 logger.error("❌ 쿼리 임베딩 생성 실패")
                 return []
             
-            # HTTP API를 통해 Dense 검색
-            search_response = self.client.search_points(
+            # 로컬 클라이언트를 통해 Dense 검색
+            dense_results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=min(top_k * 2, len(self.documents)) if self.documents else top_k,
                 with_payload=True
             )
-            
-            dense_results = search_response.get("result", [])
             
             # 2. BM25 검색 (Sparse, ARM64 호환)
             bm25_scores = self.bm25_wrapper.get_scores(query) if self.documents else []
@@ -332,10 +272,10 @@ class KoreanRAGVectorDB:
             
             # Dense 결과 처리
             for point in dense_results:
-                chunk_id = point["payload"]["chunk_id"]
+                chunk_id = point.payload["chunk_id"]
                 combined_results[chunk_id] = {
-                    'payload': point["payload"],
-                    'dense_score': float(point["score"]),
+                    'payload': point.payload,
+                    'dense_score': float(point.score),
                     'sparse_score': 0.0
                 }
             
@@ -400,7 +340,7 @@ class KoreanRAGVectorDB:
                 logger.error("❌ 쿼리 임베딩 생성 실패")
                 return []
             
-            search_response = self.client.search_points(
+            search_results = self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
@@ -408,14 +348,14 @@ class KoreanRAGVectorDB:
             )
             
             results = []
-            for point in search_response.get("result", []):
+            for point in search_results:
                 result = {
-                    'chunk_id': point["payload"]['chunk_id'],
-                    'content': point["payload"]['content'],
-                    'original_content': point["payload"]['original_content'],
-                    'length': point["payload"]['length'],
-                    'score': point["score"],
-                    'embedding_dim': point["payload"].get('embedding_dim', 0),
+                    'chunk_id': point.payload['chunk_id'],
+                    'content': point.payload['content'],
+                    'original_content': point.payload['original_content'],
+                    'length': point.payload['length'],
+                    'score': point.score,
+                    'embedding_dim': point.payload.get('embedding_dim', 0),
                     'search_type': 'dense_only'
                 }
                 results.append(result)
@@ -612,13 +552,12 @@ Context에 없는 정보는 추측하지 말고, 컨텍스트 기반으로만 �
             return None
 
 class KoreanRAGSystem:
-    """한국어 RAG 시스템 (HTTP API 기반)"""
+    """한국어 RAG 시스템 (로컬 파일 시스템 기반)"""
     
     def __init__(
         self,
-        collection_name: str = "korean_rag_http_collection",
-        qdrant_host: str = "localhost",
-        qdrant_port: int = 6333,
+        collection_name: str = "korean_rag_local_collection",
+        db_path: str = "./qdrant_storage",
         ollama_host: str = "localhost",
         ollama_port: int = 11434,
         llm_model: str = "qwen3:14b"
@@ -628,18 +567,16 @@ class KoreanRAGSystem:
         
         Args:
             collection_name: Qdrant 컬렉션 이름
-            qdrant_host: Qdrant 서버 호스트
-            qdrant_port: Qdrant 서버 포트
+            db_path: Qdrant 로컬 데이터베이스 저장 경로
             ollama_host: Ollama 서버 호스트
             ollama_port: Ollama 서버 포트
             llm_model: 사용할 LLM 모델명
         """
         # 벡터 DB 초기화
         logger.info("벡터 데이터베이스를 초기화합니다...")
-        self.vector_db = KoreanRAGVectorDB(
+        self.vector_db = KoreanRAGVectorDB_Local(
             collection_name=collection_name,
-            qdrant_host=qdrant_host,
-            qdrant_port=qdrant_port,
+            db_path=db_path,
             ollama_host=ollama_host,
             ollama_port=ollama_port
         )
@@ -934,12 +871,11 @@ parser = argparse.ArgumentParser(prog="rag_test", description="한국어 RAG 시
 g = parser.add_argument_group("Common Parameter")
 g.add_argument("--input", type=str, help="입력 JSON 파일 경로")
 g.add_argument("--output", type=str, help="출력 JSON 파일 경로")
-g.add_argument("--collection_name", type=str, default="korean_rag_http_collection", help="Qdrant 컬렉션 이름")
-g.add_argument("--qdrant_host", type=str, default="localhost", help="Qdrant 서버 호스트")
-g.add_argument("--qdrant_port", type=int, default=6333, help="Qdrant 서버 포트")
+g.add_argument("--collection_name", type=str, default="korean_rag_local_collection", help="Qdrant 컬렉션 이름")
+g.add_argument("--db_path", type=str, default="./qdrant_storage", help="Qdrant 로컬 데이터베이스 저장 경로")
 g.add_argument("--ollama_host", type=str, default="localhost", help="Ollama 서버 호스트")
 g.add_argument("--ollama_port", type=int, default=11434, help="Ollama 서버 포트")
-g.add_argument("--llm_model", type=str, default="qwen3:8b-fp16", help="사용할 LLM 모델")
+g.add_argument("--llm_model", type=str, default="qwen3:14b", help="사용할 LLM 모델")
 g.add_argument("--mode", type=str, choices=["batch", "interactive"], default="interactive", help="실행 모드")
 # fmt: on
 
@@ -951,8 +887,7 @@ def main(args):
         # RAG 시스템 초기화
         rag_system = KoreanRAGSystem(
             collection_name=args.collection_name,
-            qdrant_host=args.qdrant_host,
-            qdrant_port=args.qdrant_port,
+            db_path=args.db_path,
             ollama_host=args.ollama_host,
             ollama_port=args.ollama_port,
             llm_model=args.llm_model

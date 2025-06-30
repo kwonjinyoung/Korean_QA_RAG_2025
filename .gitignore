@@ -69,3 +69,6 @@ datasets/
 *.temp
 .DS_Store
 Thumbs.db 
+model/rag_data_maker/
+qdrant_storage_32/
+RAG/03_rag_make_vectordb/qdrant_local_db/

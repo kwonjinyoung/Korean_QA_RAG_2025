@@ -5,14 +5,20 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.115.13",
     "fastembed>=0.7.1",
     "ipykernel>=6.29.5",
     "langchain>=0.3.26",
     "langchain-community>=0.3.26",
+    "langchain-ollama>=0.3.3",
     "langchain-qdrant>=0.2.0",
     "pypdf>=5.6.0",
     "python-docx>=1.2.0",
+    "python-multipart>=0.0.20",
+    "qdrant-client>=1.14.3",
     "rank-bm25>=0.2.2",
     "requests>=2.32.4",
+    "scikit-learn>=1.7.0",
     "tqdm>=4.67.1",
+    "uvicorn>=0.34.3",
 ]
