@@ -31,6 +31,7 @@ from transformers import (
     set_seed,  # 재현 가능한 결과를 위한 시드 설정
     EarlyStoppingCallback,  # 조기 중단 콜백
     BitsAndBytesConfig,  # 양자화 설정
+    IntervalStrategy,  # 평가 및 저장 전략 열거형
 )
 from transformers.trainer_utils import get_last_checkpoint  # 마지막 체크포인트 찾기
 # PEFT(Parameter Efficient Fine-Tuning) 라이브러리 - LoRA 구현
@@ -525,10 +526,14 @@ def main():
 
     # 조기 중단(Early Stopping) 콜백 설정
     # Loss가 0.05 이하로 떨어지거나 개선이 없으면 훈련을 중단합니다
-    early_stopping_callback = EarlyStoppingCallback(
-        early_stopping_patience=5,  # 5번의 평가에서 개선이 없으면 중단
-        early_stopping_threshold=0.05  # Loss가 0.05 이하가 되면 목표 달성으로 간주
-    )
+    callbacks = []
+    if hasattr(training_args, "eval_strategy") and training_args.eval_strategy != IntervalStrategy.NO:
+        logger.info(f"평가 전략: {training_args.eval_strategy}")
+        early_stopping_callback = EarlyStoppingCallback(
+            early_stopping_patience=5,  # 5번의 평가에서 개선이 없으면 중단
+            early_stopping_threshold=0.05  # Loss가 0.05 이하가 되면 목표 달성으로 간주
+        )
+        callbacks.append(early_stopping_callback)
     
     # Trainer 객체 생성
     # Trainer는 HuggingFace에서 제공하는 고수준 훈련 API입니다
@@ -539,7 +544,7 @@ def main():
         eval_dataset=eval_dataset,  # 검증 데이터셋
         tokenizer=tokenizer,  # 토크나이저
         data_collator=data_collator,  # 데이터 콜레이터
-        callbacks=[early_stopping_callback],  # 콜백 함수들
+        callbacks=callbacks,  # 콜백 함수들
     )
 
     # 훈련 실행
@@ -606,25 +611,24 @@ def create_training_config():
     """
     return {
         # 모델 관련 설정
-        "model_name_or_path": "Qwen/Qwen3-32B",  # 사용할 모델
+        "model_name_or_path": "Qwen/Qwen3-8B",  # 사용할 모델
         
         # 양자화 관련 설정 (메모리 절약)
-        "use_4bit_quantization": True,  # 4bit 양자화 사용
+        "use_4bit_quantization": False,  # 4bit 양자화 사용 안함
         "bnb_4bit_compute_dtype": "float16",  # 계산용 데이터 타입
         "bnb_4bit_quant_type": "nf4",  # 양자화 타입
         "bnb_4bit_use_double_quant": True,  # 이중 양자화 사용
         
         # 데이터 관련 설정
-        "train_data_path": "02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 경로 수정
+        "train_data_path": "02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 경로
         "val_data_path": None,  # 검증 데이터는 훈련 데이터에서 분할
-        "max_seq_length": 2048,  # 최대 시퀀스 길이
+        "max_seq_length": 4096,  # 최대 시퀀스 길이
         
         # 출력 및 로깅 설정
-        "output_dir": "./results",  # 결과 저장 디렉토리
+        "output_dir": "./results/qwen3-8b-16bit-lora-korean-qa-rag",  # 결과 저장 디렉토리
         "overwrite_output_dir": True,  # 기존 디렉토리 덮어쓰기
         "do_train": True,  # 훈련 실행
         "do_eval": True,  # 평가 실행
-        "evaluation_strategy": "steps",  # 평가 전략
         "eval_steps": 100,  # 평가 간격
         "save_strategy": "steps",  # 저장 전략
         "save_steps": 100,  # 저장 간격
@@ -634,25 +638,30 @@ def create_training_config():
         
         # 훈련 하이퍼파라미터
         "num_train_epochs": 5,  # 훈련 에포크 수
-        "per_device_train_batch_size": 1,  # 디바이스당 훈련 배치 크기
-        "per_device_eval_batch_size": 2,  # 디바이스당 평가 배치 크기
-        "gradient_accumulation_steps": 16,  # 그래디언트 누적 스텝
+        "per_device_train_batch_size": 16,  # 디바이스당 훈련 배치 크기
+        "per_device_eval_batch_size": 16,  # 디바이스당 평가 배치 크기
+        "gradient_accumulation_steps": 1,  # 그래디언트 누적 스텝
         "learning_rate": 1e-4,  # 학습률
         "weight_decay": 0.01,  # 가중치 감쇠
         "warmup_ratio": 0.03,  # 워밍업 비율
         "lr_scheduler_type": "cosine",  # 학습률 스케줄러
+        "dataloader_num_workers": 4,  # 데이터 로더 워커 수
+        "fp16": True,  # 16bit 정밀도 사용
         
         # LoRA 관련 설정
         "use_lora": True,  # LoRA 사용
-        "lora_r": 32,  # LoRA rank
-        "lora_alpha": 64,  # LoRA alpha
+        "lora_r": 64,  # LoRA rank
+        "lora_alpha": 128,  # LoRA alpha
         "lora_dropout": 0.05,  # LoRA 드롭아웃
+        "lora_target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",  # 타겟 모듈
         
         # 기타 설정
         "seed": 42,  # 랜덤 시드
-        "dataloader_num_workers": 0,  # 데이터 로더 워커 수
         "report_to": "tensorboard",  # 리포트 도구
         "run_name": "korean-qa-rag-finetune",  # 실험 이름
+        "trust_remote_code": True,  # 원격 코드 신뢰
+        "ddp_find_unused_parameters": False,  # 미사용 파라미터 찾기 비활성화
+        "validation_split_percentage": 10,  # 검증 데이터 분할 비율
     }
 
 
