@@ -7,16 +7,17 @@ Qwen3 모델 로딩 및 추론을 위한 함수들
 import os
 import time
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.utils.quantization_config import BitsAndBytesConfig
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def load_model(base_model_path: str, peft_model_path: str = None, use_4bit: bool = True) -> Tuple[Any, Any]:
+def load_model(base_model_path: str, peft_model_path: Optional[str] = None, use_4bit: bool = True) -> Tuple[Any, Any]:
     """
     모델과 토크나이저를 로드합니다.
     
@@ -76,14 +77,14 @@ def load_model(base_model_path: str, peft_model_path: str = None, use_4bit: bool
     
     return model, tokenizer
 
-def create_prompt(question_type: str, question: str, other_info: Dict[str, Any] = None) -> str:
+def create_prompt(question_type: str, question: str, other_info: Optional[Dict[str, Any]] = None) -> str:
     """
     질문 유형에 따라 프롬프트를 생성합니다.
     
     Args:
         question_type: 질문 유형 (예: "서술형", "선택형", "단답형" 등)
         question: 질문 내용
-        other_info: 추가 정보 (선택형 문제의 보기 등)
+        other_info: 추가 정보 (선택형 문제의 보기 등), None일 수 있음
         
     Returns:
         str: 형식화된 프롬프트
@@ -95,7 +96,7 @@ def create_prompt(question_type: str, question: str, other_info: Dict[str, Any] 
 [답변]"""
     
     elif question_type == "선택형":
-        choices = other_info.get("choices", []) if other_info else []
+        choices = other_info.get("choices", []) if other_info is not None else []
         choices_text = "\n".join([f"{i+1}. {choice}" for i, choice in enumerate(choices)])
         
         return f"""[질문]
@@ -118,7 +119,7 @@ def create_prompt(question_type: str, question: str, other_info: Dict[str, Any] 
 
 [답변]"""
 
-def generate_answer(model, tokenizer, prompt: str, generation_config: Dict[str, Any] = None) -> Tuple[str, float]:
+def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[Dict[str, Any]] = None) -> Tuple[str, float]:
     """
     주어진 프롬프트에 대한 답변을 생성합니다.
     
@@ -172,11 +173,11 @@ if __name__ == "__main__":
     os.environ['TOKENIZERS_PARALLELISM'] = 'false'
     
     # 모델 경로 설정
-    base_model = "Qwen/Qwen3-8B"  # 또는 "Qwen/Qwen3-32B"
-    peft_model = "./results/qwen3-8b-16bit-lora-korean-qa-improved-test-dev-all-data/checkpoint-100"
+    base_model = "Qwen/Qwen3-8B"
+    peft_model = "../00_train/results/qwen3-8b-4bit-lora-korean-qa-rag/checkpoint-110"
     
-    # 모델 로드
-    model, tokenizer = load_model(base_model, peft_model, use_4bit=False)
+    # 모델 로드 (파인튜닝할 때와 동일하게 4bit 양자화 사용)
+    model, tokenizer = load_model(base_model, peft_model, use_4bit=True)
     
     # 테스트 질문
     test_question = "인공지능이란 무엇인가요?"

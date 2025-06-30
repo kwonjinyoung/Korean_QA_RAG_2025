@@ -24,16 +24,15 @@ from transformers import (
     AutoConfig,  # 모델 설정 자동 로드
     AutoModelForCausalLM,  # 언어 생성 모델 자동 로드
     AutoTokenizer,  # 토크나이저 자동 로드
-    HfArgumentParser,  # Hugging Face 인수 파서
-    TrainingArguments,  # 훈련 관련 설정
-    Trainer,  # 훈련 실행 클래스
-    DataCollatorForLanguageModeling,  # 언어 모델링용 데이터 콜레이터
     set_seed,  # 재현 가능한 결과를 위한 시드 설정
-    EarlyStoppingCallback,  # 조기 중단 콜백
     BitsAndBytesConfig,  # 양자화 설정
-    IntervalStrategy,  # 평가 및 저장 전략 열거형
 )
-from transformers.trainer_utils import get_last_checkpoint  # 마지막 체크포인트 찾기
+from transformers.hf_argparser import HfArgumentParser  # Hugging Face 인수 파서
+from transformers.training_args import TrainingArguments  # 훈련 관련 설정
+from transformers.trainer import Trainer  # 훈련 실행 클래스
+from transformers.data.data_collator import DataCollatorForLanguageModeling  # 언어 모델링용 데이터 콜레이터
+from transformers.trainer_callback import EarlyStoppingCallback  # 조기 중단 콜백
+from transformers.trainer_utils import get_last_checkpoint, IntervalStrategy  # 마지막 체크포인트 찾기, 평가 및 저장 전략 열거형
 # PEFT(Parameter Efficient Fine-Tuning) 라이브러리 - LoRA 구현
 from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_training
 import wandb  # 실험 추적 도구 (Weights & Biases)
@@ -217,6 +216,8 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     if model_args.config_name:
         config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)
     else:
+        if model_args.model_name_or_path is None:
+            raise ValueError("model_name_or_path cannot be None")
         config = AutoConfig.from_pretrained(model_args.model_name_or_path, **config_kwargs)
 
     # 4bit 양자화 설정
@@ -238,7 +239,7 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     torch_dtype = (
         model_args.torch_dtype
         if model_args.torch_dtype in ["auto", None]
-        else getattr(torch, model_args.torch_dtype)
+        else getattr(torch, model_args.torch_dtype) if model_args.torch_dtype else None
     )
     
     # 양자화를 사용할 때는 torch_dtype을 None으로 설정 (충돌 방지)
@@ -246,6 +247,9 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
         torch_dtype = None
 
     # 실제 모델 로드
+    if model_args.model_name_or_path is None:
+        raise ValueError("model_name_or_path cannot be None")
+    
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,  # 모델 경로 또는 이름
         from_tf=bool(".ckpt" in model_args.model_name_or_path),  # TensorFlow 체크포인트 여부
@@ -296,12 +300,13 @@ def apply_lora(model, lora_args: LoraArguments):
     target_modules = lora_args.lora_target_modules.split(",") if lora_args.lora_target_modules else None
     
     # LoRA 설정 생성
+    from typing import cast, Literal
     lora_config = LoraConfig(
         r=lora_args.lora_r,  # LoRA rank (낮을수록 파라미터 적음)
         lora_alpha=lora_args.lora_alpha,  # 스케일링 파라미터
         target_modules=target_modules,  # LoRA를 적용할 모듈들
         lora_dropout=lora_args.lora_dropout,  # 드롭아웃 비율
-        bias=lora_args.lora_bias,  # 바이어스 처리 방식
+        bias=cast(Literal["none", "all", "lora_only"], lora_args.lora_bias),  # 바이어스 처리 방식
         task_type=TaskType.CAUSAL_LM,  # 작업 타입: 인과적 언어 모델링
     )
     
@@ -362,11 +367,23 @@ class CustomDataset(torch.utils.data.Dataset):
         question = item["question"]
         answer = item["answer"]
         
-        # 입력 형식: 질문 + 답변
-        full_text = f"{question}{answer}"
+        # 입력 형식: 질문 + 구분자 + 답변
+        # 구분자를 추가하여 질문과 답변을 명확히 구분
+        separator = "\n\n답변: "
+        input_text = question + separator
+        full_text = input_text + answer
         
-        # 토큰화
-        encodings = self.tokenizer(
+        # 입력 부분(질문 + 구분자) 토큰화
+        input_encodings = self.tokenizer(
+            input_text,
+            max_length=self.max_length,
+            padding=False,
+            truncation=True,
+            return_tensors="pt"
+        )
+        
+        # 전체 텍스트(질문 + 구분자 + 답변) 토큰화  
+        full_encodings = self.tokenizer(
             full_text,
             max_length=self.max_length,
             padding="max_length",
@@ -375,13 +392,20 @@ class CustomDataset(torch.utils.data.Dataset):
         )
         
         # 배치 차원 제거
-        input_ids = encodings.input_ids.squeeze(0)
-        attention_mask = encodings.attention_mask.squeeze(0)
+        input_ids = full_encodings.input_ids.squeeze(0)
+        attention_mask = full_encodings.attention_mask.squeeze(0)
         
-        # 라벨 설정 (입력과 동일, 언어 모델링 목적)
+        # 라벨 설정: 입력 부분은 -100으로 마스킹, 답변 부분만 실제 라벨
         labels = input_ids.clone()
         
-        # 패딩 토큰에 대한 라벨은 -100으로 설정 (손실 계산에서 무시됨)
+        # 입력 부분(질문 + 구분자)의 길이 계산
+        input_length = input_encodings.input_ids.shape[1]
+        
+        # 입력 부분은 -100으로 마스킹 (loss 계산에서 제외)
+        if input_length < len(labels):
+            labels[:input_length] = -100
+        
+        # 패딩 토큰에 대한 라벨도 -100으로 설정
         padding_mask = attention_mask == 0
         labels[padding_mask] = -100
         

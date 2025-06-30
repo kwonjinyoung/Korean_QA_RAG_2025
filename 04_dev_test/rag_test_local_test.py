@@ -20,6 +20,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from qdrant_client import QdrantClient
+import sys
 
 
 class TimeoutException(Exception):
@@ -40,7 +41,7 @@ def timeout(duration):
         signal.alarm(0)
 
 
-def load_test_data(file_path: str = "../../RAG/resource/korean_language_rag_V1.0_test.json") -> List[Dict]:
+def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_test.json") -> List[Dict]:
     """한국어 QA 테스트 데이터를 로드합니다."""
     print("📚 한국어 QA 테스트 데이터 로드 중...")
     
@@ -59,7 +60,7 @@ def load_existing_vectorstore():
     print("🔄 기존 Qdrant 벡터스토어 로드 중...")
     
     # DB 경로 확인
-    db_path = "./qdrant_local_db"
+    db_path = "../qdrant_local_db"
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Qdrant DB가 존재하지 않습니다: {db_path}")
     
@@ -97,6 +98,38 @@ def load_existing_vectorstore():
     
     print("✅ 벡터스토어 로드 완료!")
     return qdrant_store, client, embeddings
+
+
+def read_prompt_file(file_path: str) -> str:
+    """프롬프트 파일의 내용을 읽어서 반환합니다."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
+def load_prompt_templates():
+    """프롬프트 템플릿들을 파일에서 로드합니다."""
+    print("📝 프롬프트 템플릿 로드 중...")
+    
+    # 프롬프트 파일 경로 설정
+    base_path = "../prompt"
+    instruction_path = os.path.join(base_path, "00_prompt_Instruction.md")
+    context_path = os.path.join(base_path, "01_prompt_context.md")
+    correction_path = os.path.join(base_path, "02_prompt_few_shot_선택형.md")  # 실제로는 교정형 예시가 담긴 파일
+    selection_path = os.path.join(base_path, "02_prompt_few_shot_교정형.md")   # 실제로는 선택형 예시가 담긴 파일
+    
+    # 파일 존재 확인
+    for path in [instruction_path, context_path, correction_path, selection_path]:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"프롬프트 파일이 존재하지 않습니다: {path}")
+    
+    # 프롬프트 내용 읽기
+    instruction = read_prompt_file(instruction_path)
+    context_template = read_prompt_file(context_path)
+    correction_examples = read_prompt_file(correction_path)
+    selection_examples = read_prompt_file(selection_path)
+    
+    print("✅ 프롬프트 템플릿 로드 완료!")
+    return instruction, context_template, correction_examples, selection_examples
 
 
 def clean_model_output(text: str) -> str:
@@ -158,84 +191,31 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
     """RAG 체인을 생성합니다."""
     print("🔗 RAG 체인 생성 중...")
     
-    # Qwen3:8b 모델 설정 (think 태그 허용)
+    # 프롬프트 템플릿 로드
+    instruction, context_template, correction_examples, selection_examples = load_prompt_templates()
+    
+    # Qwen3:8b 모델 설정 (timeout 제거)
     llm = ChatOllama(
         model="qwen3:8b",
         base_url="http://localhost:11435",
         temperature=0.1,  # 적당한 창의성 유지
         num_predict=4096*2,  # 출력 토큰 수 대폭 증가
         num_ctx=4096*2,     # 컨텍스트 길이 대폭 증가 (퓨샷 예시 포함)
-        timeout=300,       # 요청 타임아웃 300초로 증가
     )
     
-    # 질문 유형별 프롬프트 템플릿 정의
+    # 질문 유형별 프롬프트 템플릿 정의 (파일에서 로드한 내용 사용)
     type_instructions = {
-        "교정형": """# Instruction:
-1. 당신은 한국어 언어학 전문가입니다. 한국어 표준어 규정에 따라 생각하고 답변하세요.
-2. [질문]을 잘 읽고 답변을 생성하시오. 문장을 정확히 이해하고 올바른 답을 작성해야 합니다.
-3. 질문과 답변 예시:
-    예시 1:
-    질문: 다음 문장에서 어문 규범에 부합하지 않는 부분을 찾아 고치고, 그 이유를 설명하세요.
-    "오늘은 화요일 입니다."    
-    답변: "오늘은 화요일입니다."가 옳다. '입니다'는 '이다'의 활용형이고 '이다'는 서술격 조사이다. 조사는 하나의 단어이지만 자립성이 없기 때문에 앞말에 붙여 쓴다. 따라서 '화요일입니다'와 같이 앞말에 붙여 써야 한다.
-
-    예시 2:
-    질문: 다음 문장에서 어문 규범에 부합하지 않는 부분을 찾아 고치고, 그 이유를 설명하세요.
-    "면허 년월일을 기입해 주세요."    
-    답변: "면허 연월일을 기입해 주세요."가 옳다. '녀, 뇨, 뉴, 니'를 포함하는 한자어 음절은 단어 첫머리에 오면 '여, 요, 유, 이'의 형태로 실현되는데 이를 국어의 두음 법칙이라고 한다. 단, 의존 명사는 이러한 두음 법칙이 적용되지 않는다. 따라서 '연월일(年月日)'는 '년월일'이 아닌 '연월일'로 적는다. 한편 '年度'와 같이 명사로 쓰이기도 하고 의존 명사로 쓰이기도 하는 한자어의 경우 명사일 때는 '연도', 의존 명사일 때는 '년도'로 적는다.
-
-5. Context를 참고하여 질문에 대한 답변을 생성하세요.
-
----
-
-<Context>
-{context}
-</Context>
-
----
-
-질문: {question}
-답변: """,
-
-        "선택형": """# Instruction:
-1. 당신은 한국어 언어학 전문가입니다. 한국어 표준어 규정에 따라 생각하고 답변하세요.
-2. [질문]을 잘 읽고 답변을 생성하시오. 문장을 정확히 이해하고 올바른 답을 작성해야 합니다.
-3. 질문과 답변 예시:
-    예시 1:
-    질문: "여왕개미는 {{수개미/숫개미}}보다 더 크다." 가운데 올바른 것을 선택하고, 그 이유를 설명하세요.
-    답변: "여왕개미는 수개미보다 더 크다."가 옳다. 수컷을 이르는 접두사는 '수-'로 통일한다. 다만 '수-'가 '강아지, 개, 것, 기와, 닭, 당나귀, 돌쩌귀, 돼지, 병아리'와 결합할 때는 접두사 다음에서 나는 거센소리를 인정하고, '양, 염소, 쥐'와 결합하는 경우는 예외적으로 '숫-'을 쓴다. '개미'는 '숫-'을 쓰는 예외에 속하지도 않고 접두사 다음에서 나는 거센소리를 인정하지도 않으므로 '수개미'가 옳다.
-
-    예시 2:
-    질문: "저기 서 있는 저 나무 {{한그루가/한 그루가}} 몹시 쓸쓸해 보였다." 가운데 올바른 것을 선택하고, 그 이유를 설명하세요.
-    답변: "저기 서 있는 저 나무 한 그루가 몹시 쓸쓸해 보였다."가 옳다. 단위를 나타내는 말은 의존 명사이든 자립 명사이든 하나의 단어로 인정되는 명사이므로 앞말과 띄어 써야 한다.
-
-5. Context를 참고하여 질문에 대한 답변을 생성하세요.
-
----
-
-<Context>
-{context}
-</Context>
-
----
-
-질문: {question}
-답변: """
+        "교정형": f"{instruction}\n\n{context_template}\n\n{correction_examples}\n\n질문: {{question}}\n\n답변: ",
+        "선택형": f"{instruction}\n\n{context_template}\n\n{selection_examples}\n\n질문: {{question}}\n\n답변: "
     }
     
     # 기본 프롬프트 (타입이 명시되지 않은 경우)
-    default_prompt = ChatPromptTemplate.from_template("""
-당신은 한국어 언어학 전문가입니다. 주어진 컨텍스트를 바탕으로 질문에 대해 정확한 답변을 제공해주세요.
+    default_prompt = ChatPromptTemplate.from_template(f"""
+{instruction}
 
----
+{context_template}
 
-<Context>
-{context}
-</Context>
-
----
-
-질문: {question}
+질문: {{question}}
 
 답변:""")
     
@@ -272,17 +252,25 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
         if question_type in type_instructions:
             # 해당 유형의 프롬프트 사용
             prompt_template = type_instructions[question_type]
-            return prompt_template.format(context=context, question=question)
+            
+            # 1. 먼저 context_template 안의 {Context}를 실제 context로 치환
+            final_prompt = prompt_template.replace("{Context}", context)
+            
+            # 2. {question}을 실제 질문으로 치환
+            final_prompt = final_prompt.replace("{question}", question)
+            
+            return final_prompt
         else:
             # 기본 프롬프트 사용
-            return default_prompt.format_messages(context=context, question=question)[0].content
+            formatted_context = context_template.replace("{Context}", context)
+            return default_prompt.format_messages(context=formatted_context, question=question)[0].content
     
     # RAG 체인 구성 (동적 프롬프트 적용 + 후처리 + 재시도 로직)
     from langchain_core.runnables import RunnableLambda
     
     def create_dynamic_chain():
         def process_query(question):
-            max_retries = 2  # 최대 2회 재시도
+            max_retries = 10  # 최대 10회 재시도
             
             for attempt in range(max_retries + 1):
                 try:
@@ -300,8 +288,15 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
                     result = llm.invoke(prompt_text)
                     
                     
-                    # 4. 결과 정리 (think 태그 제거)
-                    raw_output = result.content if hasattr(result, 'content') else str(result)
+                    # 4. 결과 정리 (think 태그 제거) - 타입 안전성 확보
+                    if hasattr(result, 'content'):
+                        raw_output = result.content
+                    else:
+                        raw_output = str(result)
+                    
+                    # raw_output이 문자열이 아닌 경우 처리
+                    if not isinstance(raw_output, str):
+                        raw_output = str(raw_output)
                     
                     # 디버깅을 위해 원본 출력 확인
                     if attempt > 0:
@@ -323,13 +318,14 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
                         return cleaned_output
                     elif attempt < max_retries:
                         print(f"    ⚠️ 답변 품질 불량, 재시도 중... ({attempt + 1}/{max_retries})")
-                        # 재시도 시 약간의 무작위성 추가
-                        llm.temperature = min(0.3, llm.temperature + 0.1)
+                        # 재시도 시 약간의 무작위성 추가 - None 체크 추가
+                        current_temp = getattr(llm, 'temperature', 0.1) or 0.1
+                        llm.temperature = min(0.3, current_temp + 0.1)
                         continue
                     else:
                         # 최종 시도에서도 실패 시, 원본 출력을 더 관대하게 처리
                         print(f"    🚨 최종 시도 실패, 원본 출력 사용 시도")
-                        if len(raw_output.strip()) > 5:
+                        if isinstance(raw_output, str) and len(raw_output.strip()) > 5:
                             # think 태그만 제거하고 나머지는 보존
                             fallback_output = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL | re.IGNORECASE)
                             fallback_output = fallback_output.strip()
