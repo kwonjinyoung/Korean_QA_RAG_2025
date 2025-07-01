@@ -232,7 +232,9 @@ async def chat(request: ChatRequest):
         generation_config = {
             "temperature": request.temperature,
             "top_p": request.top_p,
-            "max_new_tokens": request.max_tokens
+            "max_new_tokens": request.max_tokens,
+            "do_sample": request.temperature > 0.1,  # 온도가 낮으면 샘플링 비활성화
+            "repetition_penalty": 1.2  # 반복 방지 페널티 추가
         }
         
         # 기본 프롬프트로 답변 생성 (서술형으로 가정)
@@ -305,7 +307,9 @@ async def generate(request: GenerateRequest):
         generation_config = {
             "temperature": request.temperature,
             "top_p": request.top_p,
-            "max_new_tokens": request.max_tokens
+            "max_new_tokens": request.max_tokens,
+            "do_sample": request.temperature > 0.1,  # 온도가 낮으면 샘플링 비활성화
+            "repetition_penalty": 1.2  # 반복 방지 페널티 추가
         }
         
         # 프롬프트가 이미 형식화된 경우와 질문만 있는 경우 구분

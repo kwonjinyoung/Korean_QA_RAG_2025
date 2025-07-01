@@ -162,8 +162,15 @@ def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[D
                 temperature=generation_config.get("temperature", 0.7),
                 top_p=generation_config.get("top_p", 0.9),
                 max_new_tokens=generation_config.get("max_new_tokens", 512),
-                do_sample=True,
+                do_sample=generation_config.get("do_sample", True),
                 pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                # 명시적으로 EOS 토큰을 생성하도록 설정
+                forced_eos_token_id=tokenizer.eos_token_id,
+                # 반복 생성 페널티 추가
+                repetition_penalty=1.2,
+                # 답변이 끝나는 특수 토큰/문자열 설정
+                stopping_criteria=None
             )
         
         # 생성 시간 계산
@@ -171,9 +178,32 @@ def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[D
         
         # 출력 디코딩 및 프롬프트 제거
         full_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # 프롬프트 부분 제거하여 답변만 추출
         answer = full_output[len(prompt):].strip()
         
-        return answer, generation_time
+        # 답변이 반복되거나 중간에 끊기는 문제 해결
+        # 반복되는 문장이나 패턴 제거
+        answer_lines = answer.split('\n')
+        cleaned_lines = []
+        seen_lines = set()
+        
+        for line in answer_lines:
+            line = line.strip()
+            # 빈 줄이거나 이미 본 줄이면 건너뜀
+            if not line or line in seen_lines:
+                continue
+            cleaned_lines.append(line)
+            seen_lines.add(line)
+        
+        # 정리된 답변
+        cleaned_answer = '\n'.join(cleaned_lines)
+        
+        # 답변이 너무 짧으면 원본 사용
+        if len(cleaned_answer) < len(answer) * 0.5:
+            return answer, generation_time
+            
+        return cleaned_answer, generation_time
     
     except Exception as e:
         logger.error(f"답변 생성 오류: {str(e)}")
@@ -214,8 +244,13 @@ async def generate_answer_streaming(model, tokenizer, prompt: str, generation_co
             temperature=generation_config.get("temperature", 0.7),
             top_p=generation_config.get("top_p", 0.9),
             max_new_tokens=generation_config.get("max_new_tokens", 512),
-            do_sample=True,
+            do_sample=generation_config.get("do_sample", True),
             pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            # 명시적으로 EOS 토큰을 생성하도록 설정
+            forced_eos_token_id=tokenizer.eos_token_id,
+            # 반복 생성 페널티 추가
+            repetition_penalty=1.2
         )
         
         # 별도 스레드에서 생성 실행
@@ -224,18 +259,34 @@ async def generate_answer_streaming(model, tokenizer, prompt: str, generation_co
         
         # 생성된 토큰을 스트리밍
         collected_tokens = []
+        seen_sentences = set()  # 중복 문장 감지용
+        current_sentence = ""
+        
         for token in streamer:
+            # 현재 문장에 토큰 추가
+            current_sentence += token
             collected_tokens.append(token)
-            # 토큰을 모아서 의미 있는 단위로 반환
-            if len(collected_tokens) >= 1 or token.endswith((".", ",", "!", "?", "\n")):
+            
+            # 문장 종료 감지 (마침표, 물음표, 느낌표, 줄바꿈 등)
+            if token.endswith((".", ",", "!", "?", "\n")) or len(collected_tokens) >= 5:
                 joined_tokens = "".join(collected_tokens)
+                
+                # 중복 문장이 아닌 경우에만 반환
+                if current_sentence.strip() not in seen_sentences:
+                    seen_sentences.add(current_sentence.strip())
+                    await asyncio.sleep(0)  # 다른 비동기 작업을 위한 양보
+                    yield joined_tokens
+                
+                # 토큰 및 현재 문장 초기화
                 collected_tokens = []
-                await asyncio.sleep(0)  # 다른 비동기 작업을 위한 양보
-                yield joined_tokens
+                if token.endswith((".", "!", "?", "\n")):
+                    current_sentence = ""
         
         # 남은 토큰이 있으면 반환
         if collected_tokens:
-            yield "".join(collected_tokens)
+            joined_tokens = "".join(collected_tokens)
+            await asyncio.sleep(0)
+            yield joined_tokens
     
     except Exception as e:
         logger.error(f"스트리밍 답변 생성 오류: {str(e)}")
