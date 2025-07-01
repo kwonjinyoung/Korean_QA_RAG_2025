@@ -150,8 +150,8 @@ class CustomDataset(torch.utils.data.Dataset):
 
 class TrainCli:
     def __init__(self):
-        self.token = "os.getenv("HF_TOKEN")"
-        self.write_token = "os.getenv("HF_TOKEN")"
+        self.token = os.getenv("HF_TOKEN")
+        self.write_token = os.getenv("HF_WRITE_TOKEN")
 
     def run(
         self,
