@@ -1,0 +1,11 @@
+fire
+wandb
+transformers==4.45.2
+accelerate==1.0.1
+numpy==1.26.4
+datasets
+huggingface-hub
+bitsandbytes
+sentencepiece
+peft==0.13.2
+trl==0.8.1
