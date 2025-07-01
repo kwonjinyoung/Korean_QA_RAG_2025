@@ -55,6 +55,26 @@ def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.js
     return test_data
 
 
+def load_ground_truth_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.json") -> Dict[str, str]:
+    """정답 데이터를 ID를 키로 하는 딕셔너리로 로드합니다."""
+    print("📚 정답 데이터 로드 중...")
+    
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"정답 데이터 파일이 존재하지 않습니다: {file_path}")
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        test_data = json.load(f)
+    
+    ground_truth = {}
+    for item in test_data:
+        question_id = item["id"]
+        if "output" in item and "answer" in item["output"]:
+            ground_truth[question_id] = item["output"]["answer"]
+    
+    print(f"✅ 정답 데이터 로드 완료: {len(ground_truth)}개 문항")
+    return ground_truth
+
+
 def load_existing_vectorstore():
     """기존에 구축된 Qdrant 벡터스토어를 로드합니다."""
     print("🔄 기존 Qdrant 벡터스토어 로드 중...")
@@ -351,7 +371,7 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
     return rag_chain, retriever
 
 
-def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
+def run_test_exam(rag_chain, test_data: List[Dict], ground_truth: Dict[str, str]) -> List[Dict]:
     """RAG 시스템으로 테스트를 수행합니다."""
     print(f"\n🎯 RAG 시스템 테스트 시작 (총 {len(test_data)}문항)")
     print("=" * 80)
@@ -367,6 +387,9 @@ def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
         print(f"유형: {question_type}")
         #print(f"질문: {question[:100]}...")
         print(f"질문: {question}")
+        
+        # 정답 가져오기
+        reference_answer = ground_truth.get(question_id, "")
         
         # RAG로 답변 생성
         #print(f"🤖 답변 생성 중...")
@@ -390,7 +413,11 @@ def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
                     "question": question
                 },
                 "output": {
-                    "answer": generated_answer
+                    "answer": generated_answer,
+                    "reference": reference_answer
+                },
+                "metadata": {
+                    "response_time": response_time
                 }
             }
             results.append(result)
@@ -404,7 +431,12 @@ def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
                     "question": question
                 },
                 "output": {
-                    "answer": f"답변 생성 시간 초과: {str(te)}"
+                    "answer": f"답변 생성 시간 초과: {str(te)}",
+                    "reference": reference_answer
+                },
+                "metadata": {
+                    "error": "timeout",
+                    "response_time": 300.0  # 타임아웃 시간
                 }
             }
             results.append(result)
@@ -418,7 +450,12 @@ def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
                     "question": question
                 },
                 "output": {
-                    "answer": f"답변 생성 오류: {str(e)}"
+                    "answer": f"답변 생성 오류: {str(e)}",
+                    "reference": reference_answer
+                },
+                "metadata": {
+                    "error": str(e),
+                    "response_time": time.time() - start_time
                 }
             }
             results.append(result)
@@ -432,14 +469,25 @@ def run_test_exam(rag_chain, test_data: List[Dict]) -> List[Dict]:
 def save_test_results(results: List[Dict]):
     """테스트 결과를 result.json 파일로 저장합니다."""
     output_file = "result.json"
+    eval_output_file = "../05_dev_evaluation/eval_input.json"
     
     try:
+        # 기본 결과 파일 저장
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
         
         print(f"\n💾 테스트 결과가 저장되었습니다: {output_file}")
         print(f"   - 총 {len(results)}개 문항 결과 저장")
         print(f"   - 파일 크기: {os.path.getsize(output_file) / 1024:.1f} KB")
+        
+        # 평가용 결과 파일도 저장 (05_dev_evaluation 디렉토리에)
+        os.makedirs(os.path.dirname(eval_output_file), exist_ok=True)
+        with open(eval_output_file, 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        
+        print(f"💾 평가용 결과 파일이 저장되었습니다: {eval_output_file}")
+        print(f"   - 총 {len(results)}개 문항 결과 저장")
+        print(f"   - 파일 크기: {os.path.getsize(eval_output_file) / 1024:.1f} KB")
         
     except Exception as e:
         print(f"❌ 결과 파일 저장 실패: {e}")
@@ -507,30 +555,21 @@ def main():
         # 1. 테스트 데이터 로드
         test_data = load_test_data()
         
+        # 2. 정답 데이터 로드
+        ground_truth = load_ground_truth_data()
+        
         # 테스트용으로 1개 문항만 처리
         #test_data = test_data[:1]
         #print(f"🧪 테스트 모드: {len(test_data)}개 문항만 처리합니다.")
         
-        # 2. 기존 벡터스토어 로드
+        # 3. 기존 벡터스토어 로드
         vectorstore, client, embeddings = load_existing_vectorstore()
         
-        # 3. RAG 체인 생성
+        # 4. RAG 체인 생성
         rag_chain, retriever = create_rag_chain(vectorstore)
         
-        # 4. 간단한 테스트
-        # print("\n🧪 간단한 테스트 실행")
-        # test_question = "표준어는 무엇인가요?"
-        # print(f"테스트 질문: {test_question}")
-        
-        # try:
-        #     with timeout(30):  # 30초 타임아웃
-        #         answer = rag_chain.invoke(test_question)
-        #     print(f"생성된 답변: {answer}")
-        # except TimeoutException:
-        #     print("⏰ 간단한 테스트 타임아웃 - 실제 테스트로 넘어갑니다.")
-        
         # 5. 실제 테스트 수행
-        results = run_test_exam(rag_chain, test_data)
+        results = run_test_exam(rag_chain, test_data, ground_truth)
         
         # 6. 결과 저장
         save_test_results(results)
@@ -540,6 +579,7 @@ def main():
         
         print("\n✅ 모든 테스트가 완료되었습니다!")
         print("결과가 result.json 파일에 저장되었습니다.")
+        print("평가를 위한 파일이 ../05_dev_evaluation/eval_input.json에 저장되었습니다.")
         
     except Exception as e:
         print(f"❌ 테스트 중 오류 발생: {e}")
