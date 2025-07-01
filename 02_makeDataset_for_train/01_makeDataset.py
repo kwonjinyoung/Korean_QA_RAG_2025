@@ -41,7 +41,7 @@ def main():
         examples = correction_examples if question_type == "교정형" else selection_examples
         
         # 최종 질문 생성
-        final_question = f"{instruction}\n\n{formatted_context}\n\n{examples}\n\n질문: {question}\n\n답변: "
+        final_question = f"{instruction}\n\n{formatted_context}\n\n{examples}\n\n질문: {question}"
         
         # 결과 데이터셋에 추가
         result_dataset.append({
