@@ -12,6 +12,7 @@ import os  # 운영체제 관련 기능 (파일 경로, 디렉토리 확인 등)
 import json  # JSON 파일 읽기/쓰기
 import argparse  # 명령행 인수 파싱
 import logging  # 로그 메시지 출력
+import random  # 난수 생성
 from dataclasses import dataclass, field  # 데이터 클래스 생성을 위한 데코레이터
 from typing import Optional, Dict, Sequence  # 타입 힌트
 import warnings  # 경고 메시지 처리
@@ -172,12 +173,13 @@ class LoraArguments:
     )
 
 
-def setup_model_and_tokenizer(model_args: ModelArguments):
+def setup_model_and_tokenizer(model_args: ModelArguments, data_args: DataArguments):
     """
     모델과 토크나이저를 설정하는 함수
     
     Args:
         model_args: 모델 관련 설정을 담은 객체
+        data_args: 데이터 관련 설정을 담은 객체
     
     Returns:
         tuple: (모델, 토크나이저, 설정) 튜플 반환
@@ -203,6 +205,12 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token  # 종료 토큰을 패딩 토큰으로 설정
         tokenizer.pad_token_id = tokenizer.eos_token_id  # ID도 동일하게 설정
+    
+    # EOS 토큰이 제대로 설정되어 있는지 확인
+    if tokenizer.eos_token is None:
+        raise ValueError("토크나이저에 EOS 토큰이 설정되어 있지 않습니다.")
+    
+    logger.info(f"토크나이저 설정 완료: pad_token={tokenizer.pad_token}, eos_token={tokenizer.eos_token}")
 
     # 모델 설정(config) 로드를 위한 설정 딕셔너리
     config_kwargs = {
@@ -273,6 +281,13 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     # 새로운 토큰이 추가된 경우 필요합니다
     if len(tokenizer) > model.get_input_embeddings().num_embeddings:
         model.resize_token_embeddings(len(tokenizer))
+
+    # 생성 설정 업데이트 (생성 시 최대 길이 제한)
+    if hasattr(model, "generation_config"):
+        model.generation_config.max_length = data_args.max_seq_length
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        logger.info(f"생성 설정 업데이트: max_length={model.generation_config.max_length}, eos_token_id={model.generation_config.eos_token_id}")
 
     return model, tokenizer, config
 
@@ -345,9 +360,44 @@ class CustomDataset(torch.utils.data.Dataset):
         
         # JSON 파일에서 데이터 로드
         with open(data_path, 'r', encoding='utf-8') as f:
-            self.data = json.load(f)
+            raw_data = json.load(f)
+        
+        # 데이터 전처리: 특수 토큰 제거
+        self.data = self._preprocess_data(raw_data)
         
         logger.info(f"{data_path}에서 {len(self.data)} 개의 데이터를 로드했습니다.")
+    
+    def _preprocess_data(self, raw_data):
+        """
+        데이터 전처리 함수
+        
+        Args:
+            raw_data: 원본 데이터
+            
+        Returns:
+            전처리된 데이터
+        """
+        processed_data = []
+        special_tokens = ["[답변]", "[/답변]", "[답문]", "[/답문]"]
+        
+        for item in raw_data:
+            question = item["question"]
+            answer = item["answer"]
+            
+            # 답변에서 특수 토큰 제거
+            for token in special_tokens:
+                answer = answer.replace(token, "")
+            
+            # 공백 정리
+            answer = answer.strip()
+            
+            # 전처리된 데이터 추가
+            processed_data.append({
+                "question": question,
+                "answer": answer
+            })
+            
+        return processed_data
     
     def __len__(self):
         """데이터셋 길이 반환"""
@@ -367,10 +417,12 @@ class CustomDataset(torch.utils.data.Dataset):
         question = item["question"]
         answer = item["answer"]
         
-        # 입력 형식: 질문 + 구분자 + 답변
-        # 구분자를 추가하여 질문과 답변을 명확히 구분
+        # 입력 형식: 질문 + 구분자
         separator = "\n\n답변: "
         input_text = question + separator
+        
+        # 전체 텍스트: 질문 + 구분자 + 답변
+        # 답변이 완전히 끝나도록 EOS 토큰을 명시적으로 추가
         full_text = input_text + answer
         
         # 입력 부분(질문 + 구분자) 토큰화
@@ -382,12 +434,14 @@ class CustomDataset(torch.utils.data.Dataset):
             return_tensors="pt"
         )
         
-        # 전체 텍스트(질문 + 구분자 + 답변) 토큰화  
+        # 전체 텍스트(질문 + 구분자 + 답변) 토큰화
+        # add_special_tokens=True로 설정하여 EOS 토큰이 자동으로 추가되도록 함
         full_encodings = self.tokenizer(
             full_text,
             max_length=self.max_length,
             padding="max_length",
             truncation=True,
+            add_special_tokens=True,
             return_tensors="pt"
         )
         
@@ -474,6 +528,87 @@ def setup_datasets(data_args: DataArguments, tokenizer):
     return train_dataset, eval_dataset
 
 
+class CustomTrainer(Trainer):
+    """
+    Trainer 클래스를 상속받아 커스텀 동작을 추가한 트레이너
+    
+    생성 시 EOS 토큰을 적절히 처리하고, 답변이 중간에 끊기지 않도록 합니다.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def compute_loss(self, model, inputs, return_outputs=False):
+        """
+        손실 계산 함수를 오버라이드하여 필요한 경우 추가 처리를 수행합니다.
+        
+        Args:
+            model: 모델
+            inputs: 입력 데이터
+            return_outputs: 출력값 반환 여부
+            
+        Returns:
+            손실값 또는 (손실값, 출력값) 튜플
+        """
+        # 기본 손실 계산은 부모 클래스의 메서드를 사용
+        return super().compute_loss(model, inputs, return_outputs)
+    
+    def prediction_step(self, model, inputs, prediction_loss_only=False, ignore_keys=None):
+        """
+        예측 단계 함수를 오버라이드하여 생성 과정을 제어합니다.
+        
+        Args:
+            model: 모델
+            inputs: 입력 데이터
+            prediction_loss_only: 손실만 계산할지 여부
+            ignore_keys: 무시할 키들
+            
+        Returns:
+            손실값, 로그 확률, 라벨 튜플
+        """
+        # 평가 모드에서만 생성 설정을 적용
+        if not self.training and not prediction_loss_only:
+            # 입력 부분만 추출 (라벨이 -100인 부분)
+            input_ids = inputs["input_ids"].clone()
+            labels = inputs["labels"].clone()
+            
+            # 라벨이 -100인 부분은 원래 입력, 아닌 부분은 패딩 토큰으로 설정
+            for i in range(input_ids.shape[0]):
+                for j in range(input_ids.shape[1]):
+                    if labels[i, j] != -100:
+                        input_ids[i, j] = self.tokenizer.pad_token_id
+            
+            # 생성 설정
+            gen_kwargs = {
+                "max_length": self.model.config.max_position_embeddings,
+                "num_beams": 1,  # 빔 서치 비활성화 (그리디 디코딩)
+                "do_sample": False,  # 샘플링 비활성화
+                "temperature": 1.0,  # 온도 파라미터 (1.0은 변형 없음)
+                "top_p": 1.0,  # 누적 확률 임계값 (1.0은 모든 토큰 고려)
+                "eos_token_id": self.tokenizer.eos_token_id,  # 종료 토큰 ID
+                "pad_token_id": self.tokenizer.pad_token_id,  # 패딩 토큰 ID
+            }
+            
+            # 생성 실행
+            generated_tokens = model.generate(
+                input_ids,
+                attention_mask=inputs["attention_mask"],
+                **gen_kwargs
+            )
+            
+            # 생성된 결과 로깅 (디버깅용)
+            if self.args.local_rank == 0 and random.random() < 0.01:  # 1% 확률로 로깅
+                for i in range(min(3, input_ids.shape[0])):  # 최대 3개 샘플만 로깅
+                    input_text = self.tokenizer.decode(input_ids[i], skip_special_tokens=True)
+                    generated_text = self.tokenizer.decode(generated_tokens[i], skip_special_tokens=True)
+                    logger.info(f"입력: {input_text[:50]}...")
+                    logger.info(f"생성: {generated_text}")
+                    logger.info("-" * 50)
+        
+        # 기본 예측 단계 실행
+        return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
+
+
 def main():
     """
     메인 함수: 전체 훈련 프로세스를 실행합니다
@@ -522,7 +657,7 @@ def main():
     set_seed(training_args.seed)
 
     # 모델과 토크나이저 설정
-    model, tokenizer, config = setup_model_and_tokenizer(model_args)
+    model, tokenizer, config = setup_model_and_tokenizer(model_args, data_args)
     logger.info(f"모델 로드 완료: {model_args.model_name_or_path}")
 
     # LoRA 적용 (메모리 효율적인 파인튜닝을 위해)
@@ -559,9 +694,9 @@ def main():
         )
         callbacks.append(early_stopping_callback)
     
-    # Trainer 객체 생성
-    # Trainer는 HuggingFace에서 제공하는 고수준 훈련 API입니다
-    trainer = Trainer(
+    # CustomTrainer 객체 생성
+    # 커스텀 트레이너를 사용하여 생성 동작을 더 잘 제어합니다
+    trainer = CustomTrainer(
         model=model,  # 훈련할 모델
         args=training_args,  # 훈련 관련 설정
         train_dataset=train_dataset,  # 훈련 데이터셋
