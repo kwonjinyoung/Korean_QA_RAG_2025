@@ -4,6 +4,9 @@
 """
 
 import re
+import os
+import json
+import pandas as pd
 from typing import Dict, List, Any, Optional
 import warnings
 warnings.filterwarnings("ignore")
@@ -390,53 +393,251 @@ def get_overall_score(reference: str, candidate: str, weights: Optional[Dict[str
     return evaluator.get_overall_score(reference, candidate, weights)
 
 
+def load_evaluation_data(file_path: str = "eval_input.json") -> List[Dict]:
+    """
+    평가 데이터 로드
+    
+    Args:
+        file_path: 평가 데이터 파일 경로
+        
+    Returns:
+        List[Dict]: 평가 데이터
+    """
+    print(f"📚 평가 데이터 로드 중: {file_path}")
+    
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"평가 데이터 파일이 존재하지 않습니다: {file_path}")
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    print(f"✅ 평가 데이터 로드 완료: {len(data)}개 문항")
+    return data
+
+
+def evaluate_results(data: List[Dict], bleurt_checkpoint: Optional[str] = None) -> Dict[str, Any]:
+    """
+    모든 결과 평가
+    
+    Args:
+        data: 평가 데이터
+        bleurt_checkpoint: BLEURT 모델 체크포인트 경로 (선택사항)
+        
+    Returns:
+        Dict[str, Any]: 평가 결과
+    """
+    print("\n📊 평가 시작...")
+    
+    evaluator = TextEvaluator(bleurt_checkpoint)
+    results = []
+    
+    # 유형별 통계를 위한 딕셔너리
+    type_stats = {}
+    
+    # 전체 통계
+    total_items = len(data)
+    processed_items = 0
+    error_items = 0
+    
+    for item in data:
+        try:
+            question_id = item["id"]
+            question = item["input"]["question"]
+            question_type = item["input"]["question_type"]
+            
+            # 모델 답변과 참조 답변
+            model_answer = item["output"]["answer"]
+            reference_answer = item["output"]["reference"]
+            
+            # 답변 오류 확인
+            if "답변 생성 시간 초과" in model_answer or "답변 생성 오류" in model_answer:
+                error_items += 1
+                continue
+            
+            # 유형별 통계 초기화
+            if question_type not in type_stats:
+                type_stats[question_type] = {
+                    "count": 0,
+                    "scores": [],
+                    "exact_match": 0,
+                    "total_score": 0.0
+                }
+            
+            # 평가 수행
+            scores = evaluator.evaluate_all(reference_answer, model_answer, scale_100=True)
+            overall_score = evaluator.get_overall_score(reference_answer, model_answer)
+            
+            # 유형별 통계 업데이트
+            type_stats[question_type]["count"] += 1
+            type_stats[question_type]["scores"].append(overall_score)
+            type_stats[question_type]["total_score"] += overall_score
+            
+            if scores["exact_match"] == 100:
+                type_stats[question_type]["exact_match"] += 1
+            
+            # 결과 저장
+            result = {
+                "id": question_id,
+                "question_type": question_type,
+                "model_answer": model_answer,
+                "reference_answer": reference_answer,
+                "scores": scores,
+                "overall_score": overall_score
+            }
+            results.append(result)
+            
+            processed_items += 1
+            
+            # 진행 상황 출력
+            if processed_items % 10 == 0:
+                print(f"  진행 중: {processed_items}/{total_items} 문항 평가 완료")
+            
+        except Exception as e:
+            print(f"❌ 문항 {item.get('id', '알 수 없음')} 평가 중 오류: {e}")
+            error_items += 1
+    
+    # 전체 평균 점수 계산
+    all_scores = [result["overall_score"] for result in results]
+    avg_score = sum(all_scores) / len(all_scores) if all_scores else 0
+    
+    # 유형별 평균 점수 계산
+    for q_type in type_stats:
+        if type_stats[q_type]["count"] > 0:
+            type_stats[q_type]["avg_score"] = type_stats[q_type]["total_score"] / type_stats[q_type]["count"]
+            type_stats[q_type]["exact_match_rate"] = type_stats[q_type]["exact_match"] / type_stats[q_type]["count"]
+    
+    # 종합 결과
+    evaluation_result = {
+        "total_items": total_items,
+        "processed_items": processed_items,
+        "error_items": error_items,
+        "overall_avg_score": avg_score,
+        "type_stats": type_stats,
+        "detailed_results": results
+    }
+    
+    print(f"✅ 평가 완료: {processed_items}/{total_items} 문항 평가됨 (오류: {error_items})")
+    
+    return evaluation_result
+
+
+def print_evaluation_summary(result: Dict[str, Any]):
+    """
+    평가 결과 요약 출력
+    
+    Args:
+        result: 평가 결과
+    """
+    print("\n" + "=" * 60)
+    print("📊 한국어 QA RAG 시스템 평가 결과 요약")
+    print("=" * 60)
+    
+    print(f"총 문항 수: {result['total_items']}개")
+    print(f"평가된 문항 수: {result['processed_items']}개")
+    print(f"오류 문항 수: {result['error_items']}개")
+    print(f"전체 평균 점수: {result['overall_avg_score']:.2f}점 / 100점")
+    
+    print("\n📈 유형별 평가 결과:")
+    for q_type, stats in result["type_stats"].items():
+        print(f"  {q_type}:")
+        print(f"    - 문항 수: {stats['count']}개")
+        print(f"    - 평균 점수: {stats['avg_score']:.2f}점 / 100점")
+        print(f"    - 정확히 일치: {stats['exact_match']}개 ({stats['exact_match_rate']:.1%})")
+    
+    print("\n🔍 평가 지표별 평균 점수:")
+    
+    # 지표별 평균 계산
+    metrics = {
+        "exact_match": [],
+        "bleurt": [],
+        "bert_score_f1": [],
+        "rouge_1_fmeasure": []
+    }
+    
+    for item in result["detailed_results"]:
+        metrics["exact_match"].append(item["scores"]["exact_match"])
+        metrics["bleurt"].append(item["scores"]["bleurt"])
+        metrics["bert_score_f1"].append(item["scores"]["bert_score"]["f1"])
+        metrics["rouge_1_fmeasure"].append(item["scores"]["rouge_1"]["fmeasure"])
+    
+    # 평균 출력
+    print(f"  Exact Match: {sum(metrics['exact_match']) / len(metrics['exact_match']):.2f}점")
+    print(f"  BLEURT/의미적유사도: {sum(metrics['bleurt']) / len(metrics['bleurt']):.2f}점")
+    print(f"  BERTScore F1: {sum(metrics['bert_score_f1']) / len(metrics['bert_score_f1']):.2f}점")
+    print(f"  ROUGE-1 F-measure: {sum(metrics['rouge_1_fmeasure']) / len(metrics['rouge_1_fmeasure']):.2f}점")
+    
+    print("\n" + "=" * 60)
+
+
+def save_evaluation_results(result: Dict[str, Any], output_file: str = "evaluation_results.json"):
+    """
+    평가 결과를 JSON 파일로 저장
+    
+    Args:
+        result: 평가 결과
+        output_file: 출력 파일 경로
+    """
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        print(f"\n💾 평가 결과가 저장되었습니다: {output_file}")
+        print(f"   - 파일 크기: {os.path.getsize(output_file) / 1024:.1f} KB")
+        
+        # CSV 파일로도 저장 (요약 결과만)
+        csv_file = output_file.replace('.json', '.csv')
+        
+        # 상세 결과를 DataFrame으로 변환
+        data = []
+        for item in result["detailed_results"]:
+            data.append({
+                "id": item["id"],
+                "question_type": item["question_type"],
+                "exact_match": item["scores"]["exact_match"],
+                "bleurt": item["scores"]["bleurt"],
+                "bert_score_f1": item["scores"]["bert_score"]["f1"],
+                "rouge_1_fmeasure": item["scores"]["rouge_1"]["fmeasure"],
+                "overall_score": item["overall_score"]
+            })
+        
+        df = pd.DataFrame(data)
+        df.to_csv(csv_file, index=False, encoding='utf-8-sig')
+        
+        print(f"💾 평가 결과 요약이 CSV 파일로 저장되었습니다: {csv_file}")
+        
+    except Exception as e:
+        print(f"❌ 결과 파일 저장 실패: {e}")
+
+
+def main():
+    """
+    메인 함수: 평가 데이터 로드, 평가 수행, 결과 출력 및 저장
+    """
+    try:
+        print("🚀 한국어 QA RAG 시스템 평가 시작")
+        print("=" * 60)
+        
+        # 평가 데이터 로드
+        input_file = "eval_input.json"
+        data = load_evaluation_data(input_file)
+        
+        # 평가 수행
+        result = evaluate_results(data)
+        
+        # 결과 요약 출력
+        print_evaluation_summary(result)
+        
+        # 결과 저장
+        save_evaluation_results(result)
+        
+        print("\n✅ 평가가 완료되었습니다!")
+        
+    except Exception as e:
+        print(f"❌ 평가 중 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 # 사용 예시
 if __name__ == "__main__":
-    # 예시 텍스트
-    #reference_text = "안녕하세요, 오늘 날씨가 정말 좋습니다."
-    #candidate_text = "안녕하세요, 오늘 날씨가 매우 좋네요."
-
-    reference_text = """\"수백여 명의 군사들이 죽었다.\"가 옳다. '명'과 같이 단위를 나타내는 말은 의존 명사이든 자립 명사이든 하나의 단어로 인정되는 명사이므로 앞말과 띄어 써야 한다. 다만, 수 관형사 뒤에 단위 명사가 붙어서 차례 및 순서를 나타내는 경우나, 단위를 나타내는 명사가 아라비아 숫자 뒤에 붙는 경우에는 단위 명사를 앞말에 붙여 쓸 수 있다."""
-    candidate_text = """\"수백여 명의 군사들이 죽었다.\"가 옳다. '두 개 이상의 단위를 묶어서 이룬 단위'를 표시할 때는 두 개의 단위 사이에 가운뎃점을 쓴다. '수백 명'은 '수십 개의 십'과 '명'이 결합하여 만들어진 단위이므로, 이를 표시할 때는 '수백.명'과 같이 가운뎃점을 쓴다. 다만, 이미 굳어진 말인 '수십 년', '수만 원' 등에는 쓰지 않는다."""
-
-    # 평가 수행
-    evaluator = TextEvaluator()
-    
-    print("=== 기본 점수 (0-1 범위) ===")
-    results_basic = evaluator.evaluate_all(reference_text, candidate_text, scale_100=False)
-    print(f"Exact Match: {results_basic['exact_match']:.3f}")
-    print(f"BLEURT/의미적유사도: {results_basic['bleurt']:.3f}")
-    print(f"BERTScore F1: {results_basic['bert_score']['f1']:.3f}")
-    print(f"ROUGE-1 F-measure: {results_basic['rouge_1']['fmeasure']:.3f}")
-    
-    print("\n=== 100점 만점 점수 ===")
-    results_100 = evaluator.evaluate_all(reference_text, candidate_text, scale_100=True)
-    print(f"Exact Match: {results_100['exact_match']:.1f}점")
-    print(f"BLEURT/의미적유사도: {results_100['bleurt']:.1f}점")
-    print(f"BERTScore F1: {results_100['bert_score']['f1']:.1f}점")
-    print(f"ROUGE-1 F-measure: {results_100['rouge_1']['fmeasure']:.1f}점")
-    
-    print("\n=== 전체 점수 (가중평균) ===")
-    overall_score = evaluator.get_overall_score(reference_text, candidate_text)
-    print(f"전체 점수: {overall_score:.1f}점 / 100점")
-    
-    print("\n=== 토큰화 디버깅 ===")
-    ref_tokens = korean_tokenize(reference_text)
-    cand_tokens = korean_tokenize(candidate_text)
-    print(f"Reference 토큰: {ref_tokens}")
-    print(f"Candidate 토큰: {cand_tokens}")
-    common_tokens = set(ref_tokens) & set(cand_tokens)
-    print(f"공통 토큰: {common_tokens}")
-    print(f"공통 토큰 수: {len(common_tokens)}")
-    
-    print("\n=== 큰 따옴표 추출 디버깅 ===")
-    ref_quoted = extract_quoted_text(reference_text)
-    cand_quoted = extract_quoted_text(candidate_text)
-    print(f"Reference에서 추출된 인용문: {ref_quoted}")
-    print(f"Candidate에서 추출된 인용문: {cand_quoted}")
-    
-    if ref_quoted and cand_quoted:
-        print(f"비교할 텍스트:")
-        print(f"  Reference: '{ref_quoted[0]}'")
-        print(f"  Candidate: '{cand_quoted[0]}'")
-        print(f"  일치 여부: {ref_quoted[0].strip().lower() == cand_quoted[0].strip().lower()}")
+    main()
