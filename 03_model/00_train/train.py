@@ -416,10 +416,7 @@ class CustomDataset(torch.utils.data.Dataset):
         item = self.data[idx]
         question = item["question"]
         answer = item["answer"]
-        
-        # 입력 형식: 질문 + 구분자
-        separator = "\n\n답변: "
-        input_text = question + separator
+        input_text = question
         
         # 전체 텍스트: 질문 + 구분자 + 답변 + EOS 토큰
         # 답변이 완전히 끝나도록 EOS 토큰을 명시적으로 추가
