@@ -538,7 +538,7 @@ class CustomTrainer(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """
         손실 계산 함수를 오버라이드하여 필요한 경우 추가 처리를 수행합니다.
         
@@ -546,12 +546,13 @@ class CustomTrainer(Trainer):
             model: 모델
             inputs: 입력 데이터
             return_outputs: 출력값 반환 여부
+            num_items_in_batch: 배치 내 아이템 수 (옵션)
             
         Returns:
             손실값 또는 (손실값, 출력값) 튜플
         """
         # 기본 손실 계산은 부모 클래스의 메서드를 사용
-        return super().compute_loss(model, inputs, return_outputs)
+        return super().compute_loss(model, inputs, return_outputs, num_items_in_batch)
     
     def prediction_step(self, model, inputs, prediction_loss_only=False, ignore_keys=None):
         """
