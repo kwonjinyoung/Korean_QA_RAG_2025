@@ -421,9 +421,9 @@ class CustomDataset(torch.utils.data.Dataset):
         separator = "\n\n답변: "
         input_text = question + separator
         
-        # 전체 텍스트: 질문 + 구분자 + 답변
+        # 전체 텍스트: 질문 + 구분자 + 답변 + EOS 토큰
         # 답변이 완전히 끝나도록 EOS 토큰을 명시적으로 추가
-        full_text = input_text + answer
+        full_text = input_text + answer + self.tokenizer.eos_token
         
         # 입력 부분(질문 + 구분자) 토큰화
         input_encodings = self.tokenizer(
