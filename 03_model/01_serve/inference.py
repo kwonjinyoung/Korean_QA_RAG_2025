@@ -8,6 +8,7 @@ import os
 import time
 import logging
 import asyncio
+import re
 from typing import Dict, Any, Tuple, Optional, AsyncGenerator
 
 import torch
@@ -130,15 +131,6 @@ def create_prompt(question_type: str, question: str, other_info: Optional[Dict[s
 def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[Dict[str, Any]] = None) -> Tuple[str, float]:
     """
     주어진 프롬프트에 대한 답변을 생성합니다.
-    
-    Args:
-        model: 로드된 모델
-        tokenizer: 로드된 토크나이저
-        prompt: 입력 프롬프트
-        generation_config: 생성 설정 (temperature, top_p, max_new_tokens 등)
-        
-    Returns:
-        tuple: (생성된 답변, 생성 시간)
     """
     try:
         # 기본 생성 설정
@@ -146,7 +138,7 @@ def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[D
             generation_config = {
                 "temperature": 0.7,
                 "top_p": 0.9,
-                "max_new_tokens": 512
+                "max_new_tokens": 1024
             }
         
         # 입력 토큰화
@@ -155,22 +147,75 @@ def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[D
         # 답변 생성 시작 시간
         start_time = time.time()
         
+        # 선택형 질문인지 확인 (예: {A/B} 형태)
+        is_choice_question = bool(re.search(r'\{[^{}]+/[^{}]+\}', prompt))
+        
+        # 선택형 질문에 대한 stopping criteria 설정
+        from transformers import StoppingCriteria, StoppingCriteriaList
+        
+        class SmartStoppingCriteria(StoppingCriteria):
+            def __init__(self, tokenizer, prompt, is_choice_question=False):
+                self.tokenizer = tokenizer
+                self.prompt = prompt
+                self.is_choice_question = is_choice_question
+                self.min_length = 50  # 최소 응답 길이
+                self.repeated_tokens_threshold = 10  # 반복 감지 임계값
+                self.last_tokens = []
+                self.eos_token_id = tokenizer.eos_token_id
+                
+            def __call__(self, input_ids, scores, **kwargs):
+                # 최소 길이 확인
+                if input_ids.shape[1] - len(self.tokenizer.encode(self.prompt)) < self.min_length:
+                    return False
+                    
+                # 현재 토큰 가져오기
+                curr_token = input_ids[0][-1].item()
+                self.last_tokens.append(curr_token)
+                
+                # EOS 토큰 확인
+                if curr_token == self.eos_token_id:
+                    return True
+                
+                # 선택형 질문에 대한 특별 처리
+                if self.is_choice_question:
+                    # 마지막 20개 토큰 디코딩
+                    if len(input_ids[0]) > 20:
+                        recent_text = self.tokenizer.decode(input_ids[0][-20:])
+                        # 선택형 질문에 대한 답변이 완료된 것으로 보이면 중단
+                        if re.search(r'옳다\.' + recent_text) and len(input_ids[0]) > 100:
+                            return True
+                
+                # 반복 감지 (동일한 토큰이 계속 반복되는 경우)
+                if len(self.last_tokens) > self.repeated_tokens_threshold:
+                    recent_tokens = self.last_tokens[-self.repeated_tokens_threshold:]
+                    if len(set(recent_tokens)) <= 2:  # 최근 토큰이 1-2개 종류만 있으면 반복으로 간주
+                        return True
+                
+                # 마지막 10개 토큰이 모두 동일하면 중단 (극단적인 반복 케이스)
+                if len(self.last_tokens) >= 10 and len(set(self.last_tokens[-10:])) == 1:
+                    return True
+                    
+                return False
+        
+        # 스마트 stopping criteria 인스턴스 생성
+        stopping_criteria = StoppingCriteriaList([
+            SmartStoppingCriteria(tokenizer, prompt, is_choice_question)
+        ])
+        
         # 답변 생성
         with torch.no_grad():
             outputs = model.generate(
                 **inputs,
                 temperature=generation_config.get("temperature", 0.7),
                 top_p=generation_config.get("top_p", 0.9),
-                max_new_tokens=generation_config.get("max_new_tokens", 512),
+                max_new_tokens=generation_config.get("max_new_tokens", 1024),
                 do_sample=generation_config.get("do_sample", True),
                 pad_token_id=tokenizer.pad_token_id,
                 eos_token_id=tokenizer.eos_token_id,
-                # 명시적으로 EOS 토큰을 생성하도록 설정
                 forced_eos_token_id=tokenizer.eos_token_id,
-                # 반복 생성 페널티 추가
-                repetition_penalty=1.2,
-                # 답변이 끝나는 특수 토큰/문자열 설정
-                stopping_criteria=None
+                repetition_penalty=generation_config.get("repetition_penalty", 1.2),
+                stopping_criteria=stopping_criteria,
+                no_repeat_ngram_size=3  # 3-gram 반복 방지
             )
         
         # 생성 시간 계산
@@ -182,28 +227,57 @@ def generate_answer(model, tokenizer, prompt: str, generation_config: Optional[D
         # 프롬프트 부분 제거하여 답변만 추출
         answer = full_output[len(prompt):].strip()
         
-        # 답변이 반복되거나 중간에 끊기는 문제 해결
-        # 반복되는 문장이나 패턴 제거
-        answer_lines = answer.split('\n')
-        cleaned_lines = []
-        seen_lines = set()
-        
-        for line in answer_lines:
-            line = line.strip()
-            # 빈 줄이거나 이미 본 줄이면 건너뜀
-            if not line or line in seen_lines:
-                continue
-            cleaned_lines.append(line)
-            seen_lines.add(line)
-        
-        # 정리된 답변
-        cleaned_answer = '\n'.join(cleaned_lines)
-        
-        # 답변이 너무 짧으면 원본 사용
-        if len(cleaned_answer) < len(answer) * 0.5:
-            return answer, generation_time
+        # 선택형 질문에 대한 답변 정리
+        if is_choice_question:
+            # 선택형 질문에서는 첫 번째 완성된 문장만 추출
+            match = re.search(r'"[^"]+"\s*(?:가|이)\s*옳다\.(?:[^.]*\.)?', answer)
+            if match:
+                answer = match.group(0).strip()
+                # 추가 설명이 있으면 포함
+                explanation_match = re.search(r'옳다\.\s*(.+)', answer)
+                if explanation_match:
+                    explanation = explanation_match.group(1).strip()
+                    # 설명이 너무 길면 잘라내기
+                    if len(explanation) > 500:
+                        explanation = explanation[:500] + "..."
+                    answer = answer[:answer.find(explanation_match.group(1))] + explanation
             
-        return cleaned_answer, generation_time
+        # 일반적인 답변 정리
+        else:
+            # 답변이 반복되거나 중간에 끊기는 문제 해결
+            answer_lines = answer.split('\n')
+            cleaned_lines = []
+            seen_lines = set()
+            
+            for line in answer_lines:
+                line = line.strip()
+                # 빈 줄이거나 이미 본 줄이면 건너뜀
+                if not line or line in seen_lines:
+                    continue
+                cleaned_lines.append(line)
+                seen_lines.add(line)
+            
+            # 정리된 답변
+            cleaned_answer = '\n'.join(cleaned_lines)
+            
+            # 답변이 너무 짧으면 원본 사용
+            if len(cleaned_answer) < len(answer) * 0.5 and len(cleaned_answer) < 50:
+                cleaned_answer = answer
+                
+            # 명확한 종료 문장이 없으면 적절한 위치에서 잘라내기
+            if len(cleaned_answer) > 100 and not re.search(r'[.!?]"\s*$', cleaned_answer):
+                # 마지막 문장 끝 찾기
+                last_sentence_end = max(
+                    cleaned_answer.rfind('. '), 
+                    cleaned_answer.rfind('! '), 
+                    cleaned_answer.rfind('? ')
+                )
+                if last_sentence_end > len(cleaned_answer) * 0.5:
+                    cleaned_answer = cleaned_answer[:last_sentence_end+1]
+            
+            answer = cleaned_answer
+            
+        return answer, generation_time
     
     except Exception as e:
         logger.error(f"답변 생성 오류: {str(e)}")
