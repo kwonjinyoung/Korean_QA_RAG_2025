@@ -7,6 +7,7 @@ import re
 import os
 import json
 import pandas as pd
+import argparse
 from typing import Dict, List, Any, Optional
 import warnings
 warnings.filterwarnings("ignore")
@@ -393,12 +394,13 @@ def get_overall_score(reference: str, candidate: str, weights: Optional[Dict[str
     return evaluator.get_overall_score(reference, candidate, weights)
 
 
-def load_evaluation_data(file_path: str = "eval_input.json") -> List[Dict]:
+def load_evaluation_data(file_path: str = "eval_input.json", limit: int = None) -> List[Dict]:
     """
     평가 데이터 로드
     
     Args:
         file_path: 평가 데이터 파일 경로
+        limit: 평가할 데이터 개수 제한
         
     Returns:
         List[Dict]: 평가 데이터
@@ -411,7 +413,12 @@ def load_evaluation_data(file_path: str = "eval_input.json") -> List[Dict]:
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
-    print(f"✅ 평가 데이터 로드 완료: {len(data)}개 문항")
+    if limit and limit > 0:
+        data = data[:limit]
+        print(f"✅ 평가 데이터 로드 완료: {len(data)}개 문항 (제한: {limit}개)")
+    else:
+        print(f"✅ 평가 데이터 로드 완료: {len(data)}개 문항")
+    
     return data
 
 
@@ -613,13 +620,18 @@ def main():
     """
     메인 함수: 평가 데이터 로드, 평가 수행, 결과 출력 및 저장
     """
+    # 명령줄 인자 파싱
+    parser = argparse.ArgumentParser(description="한국어 QA RAG 시스템 평가")
+    parser.add_argument("--limit", type=int, default=None, help="평가할 데이터 개수 제한 (기본값: 전체)")
+    args = parser.parse_args()
+    
     try:
         print("🚀 한국어 QA RAG 시스템 평가 시작")
         print("=" * 60)
         
-        # 평가 데이터 로드
+        # 평가 데이터 로드 (제한 적용)
         input_file = "eval_input.json"
-        data = load_evaluation_data(input_file)
+        data = load_evaluation_data(input_file, limit=args.limit)
         
         # 평가 수행
         result = evaluate_results(data)

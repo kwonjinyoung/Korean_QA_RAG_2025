@@ -9,6 +9,7 @@ import time
 import json
 import numpy as np
 import re
+import argparse
 from typing import List, Dict, Any, Tuple
 import signal
 from contextlib import contextmanager
@@ -41,7 +42,7 @@ def timeout(duration):
         signal.alarm(0)
 
 
-def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.json") -> List[Dict]:
+def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.json", limit: int = None) -> List[Dict]:
     """한국어 QA 테스트 데이터를 로드합니다."""
     print("📚 한국어 QA 테스트 데이터 로드 중...")
     
@@ -51,7 +52,12 @@ def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.js
     with open(file_path, 'r', encoding='utf-8') as f:
         test_data = json.load(f)
     
-    print(f"✅ 테스트 데이터 로드 완료: {len(test_data)}개 문항")
+    if limit and limit > 0:
+        test_data = test_data[:limit]
+        print(f"✅ 테스트 데이터 로드 완료: {len(test_data)}개 문항 (제한: {limit}개)")
+    else:
+        print(f"✅ 테스트 데이터 로드 완료: {len(test_data)}개 문항")
+    
     return test_data
 
 
@@ -564,19 +570,20 @@ def print_test_summary(results: List[Dict]):
 
 def main():
     """메인 테스트 함수"""
+    # 명령줄 인자 파싱
+    parser = argparse.ArgumentParser(description="한국어 QA RAG 시스템 테스트")
+    parser.add_argument("--limit", type=int, default=None, help="테스트할 데이터 개수 제한 (기본값: 전체)")
+    args = parser.parse_args()
+    
     try:
         print("🚀 한국어 QA RAG 시스템 테스트 시작")
         print("=" * 80)
         
-        # 1. 테스트 데이터 로드
-        test_data = load_test_data()
+        # 1. 테스트 데이터 로드 (제한 적용)
+        test_data = load_test_data(limit=args.limit)
         
         # 2. 정답 데이터 로드
         ground_truth = load_ground_truth_data()
-        
-        # 테스트용으로 1개 문항만 처리
-        #test_data = test_data[:1]
-        #print(f"🧪 테스트 모드: {len(test_data)}개 문항만 처리합니다.")
         
         # 3. 기존 벡터스토어 로드
         vectorstore, client, embeddings = load_existing_vectorstore()
