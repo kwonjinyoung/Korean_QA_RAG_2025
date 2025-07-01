@@ -10,14 +10,20 @@ import asyncio
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import logging
+import time
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
+# 환경 변수 설정 (서버 시작 시 설정)
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
 # inference.py에서 필요한 함수들 import
-from inference import load_model, create_prompt, generate_answer
+from inference import load_model, create_prompt, generate_answer, generate_answer_streaming
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -85,6 +91,8 @@ app.add_middleware(
 # 전역 변수들
 MODEL = None
 TOKENIZER = None
+MODEL_LOADING = False
+MODEL_LOADING_LOCK = asyncio.Lock()
 MODEL_CONFIG = {
     "name": "qwen3-8b-korean-qa",
     "base_model": "Qwen/Qwen3-8B",
@@ -104,17 +112,33 @@ class KoreanQAServer:
         self.model_loaded = False
 
     async def load_model_async(self):
-        """비동기적으로 모델을 로드합니다."""
-        global MODEL, TOKENIZER
+        """비동기적으로 모델을 로드합니다. 동시성 제어를 통해 중복 로딩을 방지합니다."""
+        global MODEL, TOKENIZER, MODEL_LOADING, MODEL_LOADING_LOCK
         
-        if MODEL is None or TOKENIZER is None:
-            logger.info("모델 로딩을 시작합니다...")
-            try:
-                # 환경 변수 설정 (run_server.sh와 동일)
-                os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-                os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+        # 이미 모델이 로드되어 있으면 바로 반환
+        if MODEL is not None and TOKENIZER is not None:
+            return MODEL, TOKENIZER
+        
+        # 동시성 제어를 위한 락 획득
+        async with MODEL_LOADING_LOCK:
+            # 락을 획득한 후 다시 확인 (다른 요청이 이미 모델을 로드했을 수 있음)
+            if MODEL is not None and TOKENIZER is not None:
+                return MODEL, TOKENIZER
                 
-                MODEL, TOKENIZER = load_model(
+            # 모델 로딩 중인지 확인
+            if MODEL_LOADING:
+                # 모델 로딩이 완료될 때까지 대기
+                while MODEL_LOADING or (MODEL is None or TOKENIZER is None):
+                    await asyncio.sleep(1)
+                return MODEL, TOKENIZER
+            
+            # 모델 로딩 시작
+            MODEL_LOADING = True
+            logger.info("모델 로딩을 시작합니다...")
+            
+            try:
+                MODEL, TOKENIZER = await asyncio.to_thread(
+                    load_model,
                     MODEL_CONFIG["base_model"],
                     MODEL_CONFIG["peft_model"],
                     MODEL_CONFIG["use_4bit_quantization"]
@@ -125,6 +149,8 @@ class KoreanQAServer:
             except Exception as e:
                 logger.error(f"모델 로딩 중 오류 발생: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"모델 로딩 실패: {str(e)}")
+            finally:
+                MODEL_LOADING = False
         
         return MODEL, TOKENIZER
 
@@ -135,7 +161,8 @@ server = KoreanQAServer(base_url="http://localhost:11435", model_name="qwen3:8b"
 async def startup_event():
     """서버 시작 시 모델을 로드합니다."""
     logger.info("서버가 시작됩니다. 모델을 로딩 중...")
-    await server.load_model_async()
+    background_tasks = BackgroundTasks()
+    background_tasks.add_task(server.load_model_async)
 
 @app.get("/")
 async def root():
@@ -161,6 +188,26 @@ async def get_models():
         ]
     }
 
+async def stream_chat_response(model, tokenizer, prompt, generation_config, request_model):
+    """채팅 응답을 스트리밍합니다."""
+    created_at = datetime.now().isoformat()
+    
+    async for token in generate_answer_streaming(model, tokenizer, prompt, generation_config):
+        yield json.dumps({
+            "model": request_model,
+            "created_at": created_at,
+            "message": {"role": "assistant", "content": token},
+            "done": False
+        }) + "\n"
+    
+    # 완료 메시지 전송
+    yield json.dumps({
+        "model": request_model,
+        "created_at": created_at,
+        "message": {"role": "assistant", "content": ""},
+        "done": True
+    }) + "\n"
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """채팅 API 엔드포인트 (Ollama 호환)"""
@@ -168,7 +215,7 @@ async def chat(request: ChatRequest):
     
     # 모델이 로드되지 않은 경우 로드
     if MODEL is None or TOKENIZER is None:
-        await server.load_model_async()
+        MODEL, TOKENIZER = await server.load_model_async()
     
     try:
         # 마지막 사용자 메시지 추출
@@ -190,7 +237,17 @@ async def chat(request: ChatRequest):
         
         # 기본 프롬프트로 답변 생성 (서술형으로 가정)
         prompt = create_prompt("서술형", user_message)
-        generated_answer, generation_time = generate_answer(
+        
+        # 스트리밍 응답 요청인 경우
+        if request.stream:
+            return StreamingResponse(
+                stream_chat_response(MODEL, TOKENIZER, prompt, generation_config, request.model),
+                media_type="text/event-stream"
+            )
+        
+        # 일반 응답 요청인 경우
+        generated_answer, generation_time = await asyncio.to_thread(
+            generate_answer,
             MODEL, TOKENIZER, prompt, generation_config
         )
         
@@ -209,6 +266,31 @@ async def chat(request: ChatRequest):
         logger.error(f"Chat API 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"답변 생성 실패: {str(e)}")
 
+async def stream_generate_response(model, tokenizer, prompt, generation_config, request_model):
+    """생성 응답을 스트리밍합니다."""
+    created_at = datetime.now().isoformat()
+    start_time = time.time()
+    
+    async for token in generate_answer_streaming(model, tokenizer, prompt, generation_config):
+        generation_time = time.time() - start_time
+        yield json.dumps({
+            "model": request_model,
+            "created_at": created_at,
+            "response": token,
+            "done": False,
+            "generation_time": generation_time
+        }) + "\n"
+    
+    # 완료 메시지 전송
+    generation_time = time.time() - start_time
+    yield json.dumps({
+        "model": request_model,
+        "created_at": created_at,
+        "response": "",
+        "done": True,
+        "generation_time": generation_time
+    }) + "\n"
+
 @app.post("/api/generate")
 async def generate(request: GenerateRequest):
     """텍스트 생성 API 엔드포인트 (Ollama 호환)"""
@@ -216,7 +298,7 @@ async def generate(request: GenerateRequest):
     
     # 모델이 로드되지 않은 경우 로드
     if MODEL is None or TOKENIZER is None:
-        await server.load_model_async()
+        MODEL, TOKENIZER = await server.load_model_async()
     
     try:
         # 생성 설정
@@ -238,8 +320,16 @@ async def generate(request: GenerateRequest):
             # 이미 형식화된 프롬프트 사용
             prompt = request.prompt
         
-        # 답변 생성
-        generated_answer, generation_time = generate_answer(
+        # 스트리밍 응답 요청인 경우
+        if request.stream:
+            return StreamingResponse(
+                stream_generate_response(MODEL, TOKENIZER, prompt, generation_config, request.model),
+                media_type="text/event-stream"
+            )
+        
+        # 일반 응답 요청인 경우
+        generated_answer, generation_time = await asyncio.to_thread(
+            generate_answer,
             MODEL, TOKENIZER, prompt, generation_config
         )
         
