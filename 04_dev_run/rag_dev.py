@@ -191,14 +191,29 @@ def clean_model_output(text: str) -> str:
                     if not text.endswith('.'):
                         text += '.'
     
-    # 빈 줄 제거하고 깔끔하게 정리
+    # 중복 문장 제거
     lines = []
+    seen_lines = set()
+    
     for line in text.split('\n'):
         line = line.strip()
-        if line and not line.startswith('<'):
+        if line and not line.startswith('<') and line not in seen_lines:
             lines.append(line)
+            seen_lines.add(line)
     
     text = '\n'.join(lines)
+    
+    # 반복되는 문단 제거 (예: 동일한 문장이 2번 이상 반복되는 경우)
+    paragraphs = re.split(r'\n\s*\n', text)
+    unique_paragraphs = []
+    seen_paragraphs = set()
+    
+    for para in paragraphs:
+        if para.strip() and para.strip() not in seen_paragraphs:
+            unique_paragraphs.append(para)
+            seen_paragraphs.add(para.strip())
+    
+    text = '\n\n'.join(unique_paragraphs)
     
     # 여전히 너무 짧은 경우 기본 응답
     if len(text.strip()) < 5:
@@ -218,9 +233,10 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
     llm = ChatOllama(
         model="qwen3:8b",
         base_url="http://localhost:11435",
-        temperature=0.1,  # 적당한 창의성 유지
-        num_predict=4096*2,  # 출력 토큰 수 대폭 증가
-        num_ctx=4096*2,     # 컨텍스트 길이 대폭 증가 (퓨샷 예시 포함)
+        temperature=0.1,  # 낮은 온도로 더 결정적인 응답 생성
+        num_predict=2048,  # 출력 토큰 수 제한
+        num_ctx=4096,     # 컨텍스트 길이 유지
+        repeat_penalty=1.2,  # 반복 방지 페널티 추가
     )
     
     # 질문 유형별 프롬프트 템플릿 정의 (파일에서 로드한 내용 사용)
