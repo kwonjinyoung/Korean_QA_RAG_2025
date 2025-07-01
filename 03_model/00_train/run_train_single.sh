@@ -49,9 +49,6 @@ uv run python train.py \
     --output_dir ./results/qwen3-8b-4bit-lora-korean-qa-rag \
     --overwrite_output_dir \
     --do_train \
-    --do_eval \
-    --eval_strategy steps \
-    --eval_steps 100 \
     --save_strategy steps \
     --save_steps 100 \
     --save_total_limit 2 \
@@ -59,7 +56,6 @@ uv run python train.py \
     --logging_dir ./logs \
     --num_train_epochs 10 \
     --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 32 \
     --learning_rate 1e-4 \
     --weight_decay 0.01 \
@@ -84,17 +80,11 @@ uv run python train.py \
     --logging_first_step \
     --log_level info \
     --disable_tqdm false \
-    --metric_for_best_model eval_loss \
-    --greater_is_better false \
-    --validation_split_percentage 10 \
-    --gradient_checkpointing true \
-    --load_best_model_at_end true
+    --gradient_checkpointing true
 
 echo ""
 echo "========================================="
 echo "훈련 완료 시간: $(date)"
-echo "주의: 0.05 loss 달성을 위해 로그를 모니터링하고"
-echo "eval_loss가 0.05 이하가 되면 수동으로 중단하세요"
 echo "8B 모델 4bit LoRA + RTX 4090 1장 훈련으로 메모리 효율성 및 훈련 속도가 최적화되었습니다"
 echo "배치 사이즈: 1 (per_device_train_batch_size=1 × 1 GPU)"
 echo "그라디언트 누적 단계: 32 (총 유효 배치 사이즈: 32)"
