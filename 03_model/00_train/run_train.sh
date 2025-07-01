@@ -47,7 +47,7 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --save_total_limit 2 \
     --logging_steps 10 \
     --logging_dir ./logs \
-    --num_train_epochs 1 \
+    --num_train_epochs 20 \
     --per_device_train_batch_size 1 \
     --gradient_accumulation_steps 4 \
     --learning_rate 1e-4 \
