@@ -11,6 +11,7 @@ import os
 import json
 import time
 import logging
+import gc
 from datetime import datetime
 from typing import Dict, List, Any, Tuple
 import argparse
@@ -58,6 +59,7 @@ class FastAutoTrainingEvaluator:
         self.training_history = []
         self.best_scores = {}
         self.best_model_path = None
+        self.previous_model_path = None  # 이전 iteration 모델 경로
         
         # 테스트 데이터 로드
         self.test_data = self.load_test_data()
@@ -121,10 +123,20 @@ class FastAutoTrainingEvaluator:
         batch_size = 4
         gradient_accumulation = 4  # 기존 8에서 4로 감소 (총 유효 배치 크기 유지)
         
+        # 이어서 훈련을 위한 모델 경로 결정
+        if iteration == 1:
+            # 첫 번째 iteration은 기본 모델에서 시작
+            model_path = self.model_name
+            logger.info(f"첫 번째 iteration: 기본 모델 사용 ({self.model_name})")
+        else:
+            # 두 번째 iteration부터는 이전 결과에서 이어서 훈련
+            model_path = self.previous_model_path
+            logger.info(f"이어서 훈련: 이전 모델 사용 ({model_path})")
+        
         # 훈련 스크립트 실행을 위한 명령어 구성
         cmd = f"""
         python train_jinyoung.py \\
-            --model_name_or_path "{self.model_name}" \\
+            --model_name_or_path "{model_path}" \\
             --train_data_path "{self.train_data_path}" \\
             --eval_data_path "{self.test_data_path}" \\
             --output_dir "{epoch_output_dir}" \\
@@ -146,6 +158,7 @@ class FastAutoTrainingEvaluator:
         
         logger.info(f"=== 🚀 고속 반복 {iteration} 훈련 시작 ===")
         logger.info(f"출력 디렉토리: {epoch_output_dir}")
+        logger.info(f"시작 모델: {model_path}")
         logger.info(f"최적화된 설정:")
         logger.info(f"  - 배치 크기: {batch_size} (GPU 메모리 최대 활용)")
         logger.info(f"  - 그래디언트 누적: {gradient_accumulation}")
@@ -160,7 +173,11 @@ class FastAutoTrainingEvaluator:
             logger.error(f"훈련 실패! 종료 코드: {exit_code}")
             return None
         
+        # 다음 iteration을 위해 현재 모델 경로 저장
+        self.previous_model_path = epoch_output_dir
+        
         logger.info(f"=== ✅ 고속 반복 {iteration} 훈련 완료 ===")
+        logger.info(f"다음 iteration에서 사용할 모델 경로: {self.previous_model_path}")
         return epoch_output_dir
     
     def evaluate_model(self, model_path: str) -> Dict[str, float]:
@@ -265,10 +282,20 @@ class FastAutoTrainingEvaluator:
             for metric, score in scores.items():
                 logger.info(f"{metric}: {score:.4f}")
             
-            # GPU 메모리 정리
+            # GPU 메모리 정리 (강화)
             del model
             del base_model
+            # 가비지 컬렉션 강제 실행
+            gc.collect()
+            # CUDA 메모리 정리 (두 번 실행)
             torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            
+            # 메모리 상태 로깅
+            if torch.cuda.is_available():
+                memory_allocated = torch.cuda.memory_allocated() / 1024**3  # GB
+                memory_reserved = torch.cuda.memory_reserved() / 1024**3   # GB
+                logger.info(f"GPU 메모리 상태: 할당됨 {memory_allocated:.2f}GB, 예약됨 {memory_reserved:.2f}GB")
             
             return scores
             
@@ -371,8 +398,11 @@ class FastAutoTrainingEvaluator:
             # 훈련 기록 저장
             self.save_training_history()
             
-            logger.info(f"고속 반복 {iteration} 완료. 다음 훈련 준비...")
-            time.sleep(1)  # 짧은 대기
+            # 메모리 정리를 위한 추가 대기
+            logger.info(f"고속 반복 {iteration} 완료. 메모리 정리 및 다음 훈련 준비...")
+            gc.collect()
+            torch.cuda.empty_cache()
+            time.sleep(2)  # 메모리 정리를 위한 대기 시간 증가
         
         # 최종 결과 요약
         logger.info(f"\n{'='*60}")

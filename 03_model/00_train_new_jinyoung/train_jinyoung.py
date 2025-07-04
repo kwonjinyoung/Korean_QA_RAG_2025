@@ -432,7 +432,9 @@ class KoreanQATrainer(Trainer):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.qa_evaluator = KoreanQAEvaluator(self.tokenizer)
+        # processing_class 또는 직접 전달된 tokenizer 사용
+        tokenizer = getattr(self, 'processing_class', None) or self.tokenizer
+        self.qa_evaluator = KoreanQAEvaluator(tokenizer)
         self.eval_dataset_raw = None  # 원본 평가 데이터셋 저장
     
     def set_eval_dataset_raw(self, eval_dataset_raw):
@@ -487,8 +489,9 @@ class KoreanQATrainer(Trainer):
                 prompt = sample["prompt"]
                 true_answer = sample["answer"]
                 
-                # 토큰화
-                inputs = self.tokenizer(
+                # 토큰화 (deprecated 경고 해결)
+                tokenizer = getattr(self, 'processing_class', None) or self.tokenizer
+                inputs = tokenizer(
                     prompt,
                     return_tensors="pt",
                     max_length=512,
@@ -496,20 +499,18 @@ class KoreanQATrainer(Trainer):
                     padding=True
                 ).to(self.model.device)
                 
-                # 생성
+                # 생성 (경고 메시지 해결을 위해 그리디 디코딩 사용)
                 try:
                     outputs = self.model.generate(
                         **inputs,
                         max_new_tokens=256,
-                        do_sample=True,
-                        temperature=0.7,
-                        top_p=0.9,
-                        pad_token_id=self.tokenizer.pad_token_id,
-                        eos_token_id=self.tokenizer.eos_token_id
+                        do_sample=False,  # 그리디 디코딩으로 변경
+                        pad_token_id=tokenizer.pad_token_id,
+                        eos_token_id=tokenizer.eos_token_id
                     )
                     
                     # 디코딩
-                    generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
                     predicted_answer = self.qa_evaluator.extract_answer_from_generation(generated_text, prompt)
                     
                     predictions.append(predicted_answer)
