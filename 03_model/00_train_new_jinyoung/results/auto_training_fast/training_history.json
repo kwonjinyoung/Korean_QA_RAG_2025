@@ -1,48 +1,13 @@
 {
-  "training_history": [
-    {
-      "iteration": 1,
-      "model_path": "./results/auto_training_fast/iteration_1",
-      "scores": {
-        "exact_match": 0.86,
-        "f1_score": 0.9460918204602414,
-        "bleu_score": 0.7838745244845223,
-        "rouge1": 0.08,
-        "rouge2": 0.04,
-        "rougeL": 0.08
-      },
-      "timestamp": "2025-07-04T06:00:14.056250"
-    },
-    {
-      "iteration": 2,
-      "model_path": "./results/auto_training_fast/iteration_2",
-      "scores": {
-        "exact_match": 0.9,
-        "f1_score": 0.9489740259740259,
-        "bleu_score": 0.7974760877063105,
-        "rouge1": 0.08,
-        "rouge2": 0.04,
-        "rougeL": 0.08
-      },
-      "timestamp": "2025-07-04T06:17:39.019080"
-    }
-  ],
-  "best_scores": {
-    "exact_match": 0.9,
-    "f1_score": 0.9489740259740259,
-    "bleu_score": 0.7974760877063105,
-    "rouge1": 0.08,
-    "rouge2": 0.04,
-    "rougeL": 0.08,
-    "composite_score": 0.6816125284200841
-  },
-  "best_model_path": "./results/auto_training_fast/iteration_2",
+  "training_history": [],
+  "best_scores": {},
+  "best_model_path": null,
   "target_scores": {
     "exact_match": 0.88,
     "f1_score": 0.95,
     "bleu_score": 0.85
   },
-  "timestamp": "2025-07-04T08:06:05.896869",
+  "timestamp": "2025-07-04T08:23:20.232741",
   "optimization_info": {
     "fast_training": true,
     "optimized_batch_size": true,

@@ -73,6 +73,9 @@ class FastAutoTrainingEvaluator:
         logger.info(f"최대 반복 횟수: {max_iterations} (빠른 반복)")
         logger.info(f"반복당 에포크: {max_epochs} (빠른 수렴)")
         logger.info(f"테스트 데이터: {len(self.test_data)}개")
+        
+        # 기존 훈련 결과 확인
+        self.check_existing_training()
     
     def load_test_data(self) -> List[Dict]:
         """테스트 데이터 로드"""
@@ -124,14 +127,14 @@ class FastAutoTrainingEvaluator:
         gradient_accumulation = 4  # 기존 8에서 4로 감소 (총 유효 배치 크기 유지)
         
         # 이어서 훈련을 위한 모델 경로 결정
-        if iteration == 1:
+        if self.previous_model_path:
+            # 이전 훈련 결과가 있으면 그것을 사용
+            model_path = self.previous_model_path
+            logger.info(f"이어서 훈련: 기존 모델 사용 ({model_path})")
+        else:
             # 첫 번째 iteration은 기본 모델에서 시작
             model_path = self.model_name
-            logger.info(f"첫 번째 iteration: 기본 모델 사용 ({self.model_name})")
-        else:
-            # 두 번째 iteration부터는 이전 결과에서 이어서 훈련
-            model_path = self.previous_model_path
-            logger.info(f"이어서 훈련: 이전 모델 사용 ({model_path})")
+            logger.info(f"새로운 훈련: 기본 모델 사용 ({self.model_name})")
         
         # 훈련 스크립트 실행을 위한 명령어 구성
         cmd = f"""
@@ -355,13 +358,82 @@ class FastAutoTrainingEvaluator:
         
         logger.info(f"훈련 기록 저장: {history_file}")
     
+    def check_existing_training(self):
+        """기존 훈련 결과 확인 및 복원"""
+        history_file = os.path.join(self.base_output_dir, "training_history.json")
+        
+        if os.path.exists(history_file):
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history_data = json.load(f)
+                
+                # 기존 훈련 기록 복원
+                if 'training_history' in history_data:
+                    self.training_history = history_data['training_history']
+                    logger.info(f"✓ 기존 훈련 기록 복원: {len(self.training_history)}개 iteration")
+                
+                # 최고 성능 모델 복원
+                if 'best_scores' in history_data:
+                    self.best_scores = history_data['best_scores']
+                    self.best_model_path = history_data.get('best_model_path')
+                    logger.info(f"✓ 최고 성능 모델 복원: {self.best_model_path}")
+                
+                # 마지막 훈련 모델 찾기
+                if self.training_history:
+                    last_iteration = self.training_history[-1]
+                    last_model_path = last_iteration.get('model_path')
+                    
+                    if last_model_path and os.path.exists(last_model_path):
+                        self.previous_model_path = last_model_path
+                        logger.info(f"✓ 마지막 훈련 모델 발견: {last_model_path}")
+                        logger.info(f"✓ iteration {last_iteration['iteration']}에서 이어서 훈련")
+                    else:
+                        logger.warning(f"⚠️ 마지막 훈련 모델 파일 없음: {last_model_path}")
+                
+                logger.info(f"📊 기존 훈련 요약:")
+                logger.info(f"  - 완료된 iteration: {len(self.training_history)}개")
+                if self.best_scores:
+                    logger.info(f"  - 최고 종합 점수: {self.best_scores.get('composite_score', 0):.4f}")
+                    
+            except Exception as e:
+                logger.error(f"기존 훈련 기록 로드 실패: {e}")
+                logger.info("새로운 훈련으로 시작합니다.")
+        else:
+            logger.info("기존 훈련 기록이 없습니다. 새로운 훈련을 시작합니다.")
+    
+    def get_next_iteration_number(self) -> int:
+        """다음 iteration 번호 반환"""
+        if not self.training_history:
+            return 1
+        
+        # 마지막 iteration 번호 + 1
+        last_iteration = max(record['iteration'] for record in self.training_history)
+        return last_iteration + 1
+    
     def run_auto_training(self):
         """고속 자동 훈련 실행"""
         logger.info("🚀 고속 자동 훈련 시스템 시작!")
         
         os.makedirs(self.base_output_dir, exist_ok=True)
         
-        for iteration in range(1, self.max_iterations + 1):
+        # 시작 iteration 번호 결정
+        start_iteration = self.get_next_iteration_number()
+        
+        # 이미 목표 달성했는지 확인
+        if self.best_scores and self.check_target_achieved(self.best_scores):
+            logger.info(f"🎯 이미 목표 점수를 달성했습니다!")
+            logger.info(f"최고 성능 모델: {self.best_model_path}")
+            return self.best_model_path, self.best_scores
+        
+        # 남은 iteration 계산
+        remaining_iterations = self.max_iterations - len(self.training_history)
+        if remaining_iterations <= 0:
+            logger.info(f"📊 최대 반복 횟수({self.max_iterations})에 도달했습니다.")
+            return self.best_model_path, self.best_scores
+        
+        logger.info(f"🔄 {start_iteration}번째 iteration부터 시작 (남은 횟수: {remaining_iterations})")
+        
+        for iteration in range(start_iteration, self.max_iterations + 1):
             logger.info(f"\n{'='*60}")
             logger.info(f"🚀 고속 반복 {iteration}/{self.max_iterations} 시작")
             logger.info(f"{'='*60}")
@@ -386,6 +458,9 @@ class FastAutoTrainingEvaluator:
                 "timestamp": datetime.now().isoformat()
             }
             self.training_history.append(iteration_record)
+            
+            # 훈련 기록 즉시 저장 (중간에 중단되어도 복원 가능)
+            self.save_training_history()
             
             # 최고 성능 모델 업데이트
             self.update_best_model(model_path, scores)
