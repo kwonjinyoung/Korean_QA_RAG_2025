@@ -1,0 +1,17 @@
+{
+  "training_history": [],
+  "best_scores": {},
+  "best_model_path": null,
+  "target_scores": {
+    "exact_match": 0.7,
+    "f1_score": 0.75,
+    "bleu_score": 0.65
+  },
+  "timestamp": "2025-07-03T23:54:37.111998",
+  "optimization_info": {
+    "fast_training": true,
+    "optimized_batch_size": true,
+    "reduced_sequence_length": true,
+    "quick_evaluation": true
+  }
+}

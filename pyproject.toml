@@ -8,6 +8,7 @@ dependencies = [
     "bert-score>=0.3.13",
     "bitsandbytes>=0.46.0",
     "bleurt-pytorch>=0.0.1",
+    "deepspeed>=0.17.1",
     "fastapi>=0.115.13",
     "fastembed>=0.7.1",
     "ipykernel>=6.29.5",

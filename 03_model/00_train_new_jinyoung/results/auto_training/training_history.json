@@ -1,0 +1,11 @@
+{
+  "training_history": [],
+  "best_scores": {},
+  "best_model_path": null,
+  "target_scores": {
+    "exact_match": 0.75,
+    "f1_score": 0.8,
+    "bleu_score": 0.7
+  },
+  "timestamp": "2025-07-03T23:37:37.250065"
+}
