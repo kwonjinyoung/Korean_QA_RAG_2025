@@ -73,3 +73,4 @@ model/rag_data_maker/
 qdrant_storage_32/
 RAG/03_rag_make_vectordb/qdrant_local_db/
 03_model/00_train/results/
+03_model/00_train_new_jinyoung/results/

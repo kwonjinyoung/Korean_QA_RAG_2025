@@ -118,7 +118,7 @@ class FastAutoTrainingEvaluator:
         
         # 최적화된 훈련 파라미터
         # GPU 메모리 56% 사용 중이므로 배치 크기를 증가시킬 수 있음
-        batch_size = 8  # 기존 4에서 8로 증가
+        batch_size = 4
         gradient_accumulation = 4  # 기존 8에서 4로 감소 (총 유효 배치 크기 유지)
         
         # 훈련 스크립트 실행을 위한 명령어 구성

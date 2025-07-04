@@ -29,19 +29,19 @@ echo "Python 환경 확인:"
 python --version
 echo ""
 
-# 최적화된 목표 점수 설정 (빠른 달성을 위해 약간 낮춤)
-TARGET_EXACT_MATCH=0.70  # 정확도 70% (기존 75%)
-TARGET_F1_SCORE=0.75     # F1 점수 75% (기존 80%)
-TARGET_BLEU_SCORE=0.65   # BLEU 점수 65% (기존 70%)
-MAX_ITERATIONS=8         # 최대 8번 반복 (기존 10번)
-MAX_EPOCHS=3            # 반복당 3 에포크 (기존 5번) - 더 빠른 반복
+# 전문가 수준 목표 점수 설정 (고품질 모델을 위한 높은 기준)
+TARGET_EXACT_MATCH=0.88  # 정확도 85% (전문가 수준)
+TARGET_F1_SCORE=0.95     # F1 점수 90% (전문가 수준)
+TARGET_BLEU_SCORE=0.85   # BLEU 점수 80% (전문가 수준)
+MAX_ITERATIONS=20        # 최대 15번 반복 (전문가 수준 달성을 위한 충분한 반복)
+MAX_EPOCHS=5             # 반복당 5 에포크 (품질 중심)
 
-echo "=== 고속 훈련 설정 ==="
-echo "목표 정확도 (Exact Match): ${TARGET_EXACT_MATCH} (빠른 달성)"
-echo "목표 F1 점수: ${TARGET_F1_SCORE} (빠른 달성)" 
-echo "목표 BLEU 점수: ${TARGET_BLEU_SCORE} (빠른 달성)"
+echo "=== 전문가 수준 훈련 설정 ==="
+echo "목표 정확도 (Exact Match): ${TARGET_EXACT_MATCH} (전문가 수준)"
+echo "목표 F1 점수: ${TARGET_F1_SCORE} (전문가 수준)" 
+echo "목표 BLEU 점수: ${TARGET_BLEU_SCORE} (전문가 수준)"
 echo "최대 반복 횟수: ${MAX_ITERATIONS}"
-echo "반복당 에포크 수: ${MAX_EPOCHS} (빠른 반복)"
+echo "반복당 에포크 수: ${MAX_EPOCHS} (품질 중심)"
 echo "배치 크기 최적화: GPU 메모리 최대 활용"
 echo "출력 디렉토리: ./results/auto_training_fast"
 echo ""
