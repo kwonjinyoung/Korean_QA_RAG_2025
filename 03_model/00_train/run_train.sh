@@ -55,7 +55,7 @@ uv run python -m torch.distributed.launch --nproc_per_node=2 --use_env train.py 
     --warmup_ratio 0.03 \
     --lr_scheduler_type cosine \
     --dataloader_num_workers 4 \
-    --fp16 \
+    --bf16 \
     --seed 42 \
     --report_to tensorboard \
     --run_name korean-qa-rag-finetune \
