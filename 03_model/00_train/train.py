@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Korean QA RAG Fine-tuning Script for Qwen 3-32B with 4-bit Quantization
-한국어 QA RAG 데이터셋을 이용한 Qwen 3-32B 모델 4bit 양자화 파인튜닝 스크립트
+Korean QA RAG Fine-tuning Script for Qwen 3-0.6B with 16-bit
+한국어 QA RAG 데이터셋을 이용한 Qwen 3-0.6B 모델 16bit 파인튜닝 스크립트
 
-이 스크립트는 한국어 질문-답변 데이터셋을 사용하여 Qwen 3-32B 모델을 파인튜닝합니다.
-메모리 효율성을 위해 4bit 양자화와 LoRA(Low-Rank Adaptation) 기법을 사용합니다.
+이 스크립트는 한국어 질문-답변 데이터셋을 사용하여 Qwen 3-0.6B 모델을 파인튜닝합니다.
+메모리 효율성을 위해 16bit 정밀도를 사용합니다.
 """
 
 # 필요한 라이브러리들을 가져옵니다
@@ -58,7 +58,7 @@ class ModelArguments:
     @dataclass 데코레이터를 사용하여 자동으로 __init__, __repr__ 등 메서드 생성
     """
     model_name_or_path: Optional[str] = field(
-        default="Qwen/Qwen3-8B",  # 기본값: Qwen 3-8B 모델
+        default="Qwen/Qwen3-0.6B",  # 기본값: Qwen 3-0.6B 모델
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     config_name: Optional[str] = field(
@@ -94,7 +94,7 @@ class ModelArguments:
         metadata={"help": "Whether or not to allow for custom models defined on the Hub in their own modeling files"}
     )
     use_4bit_quantization: bool = field(
-        default=True,  # 4bit 양자화 사용 (메모리 절약)
+        default=False,  # 4bit 양자화 사용 안함
         metadata={"help": "Whether to use 4-bit quantization for memory efficiency"}
     )
     bnb_4bit_compute_dtype: str = field(
@@ -126,7 +126,7 @@ class DataArguments:
         metadata={"help": "Path to the validation data file"}
     )
     max_seq_length: int = field(
-        default=4096,  # 최대 시퀀스 길이 (토큰 개수)
+        default=3500,  # 최대 시퀀스 길이 (토큰 개수)
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."}
     )
     preprocessing_num_workers: Optional[int] = field(
@@ -147,7 +147,7 @@ class LoraArguments:
     전체 모델을 업데이트하는 대신 작은 어댑터만 훈련시킵니다.
     """
     use_lora: bool = field(
-        default=True,  # LoRA 사용 여부
+        default=False,  # LoRA 사용 안함
         metadata={"help": "Whether to use LoRA for parameter efficient fine-tuning"}
     )
     lora_r: int = field(
@@ -768,7 +768,7 @@ def create_training_config():
     """
     return {
         # 모델 관련 설정
-        "model_name_or_path": "Qwen/Qwen3-8B",  # 사용할 모델
+        "model_name_or_path": "Qwen/Qwen3-0.6B",  # 사용할 모델
         
         # 양자화 관련 설정 (메모리 절약)
         "use_4bit_quantization": False,  # 4bit 양자화 사용 안함
@@ -779,7 +779,7 @@ def create_training_config():
         # 데이터 관련 설정
         "train_data_path": "02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 경로
         "val_data_path": None,  # 검증 데이터는 훈련 데이터에서 분할
-        "max_seq_length": 4096,  # 최대 시퀀스 길이
+        "max_seq_length": 3500,  # 최대 시퀀스 길이
         
         # 출력 및 로깅 설정
         "output_dir": "./results/qwen3-8b-16bit-lora-korean-qa-rag",  # 결과 저장 디렉토리
@@ -806,7 +806,7 @@ def create_training_config():
         "fp16": True,  # 16bit 정밀도 사용
         
         # LoRA 관련 설정
-        "use_lora": True,  # LoRA 사용
+        "use_lora": False,  # LoRA 사용 안함
         "lora_r": 64,  # LoRA rank
         "lora_alpha": 128,  # LoRA alpha
         "lora_dropout": 0.05,  # LoRA 드롭아웃
