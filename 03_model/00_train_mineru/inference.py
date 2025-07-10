@@ -7,21 +7,16 @@ Qdrant VectorDB 테스트 코드
 import os
 import time
 import json
-import numpy as np
 import re
 import argparse
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict
 import signal
 from contextlib import contextmanager
 
-from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
 from qdrant_client import QdrantClient
-import sys
 
 
 class TimeoutException(Exception):
@@ -42,7 +37,7 @@ def timeout(duration):
         signal.alarm(0)
 
 
-def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.json", limit: int = None) -> List[Dict]:
+def load_test_data(file_path: str = "/home/n/Korean_QA_RAG_2025/resource/korean_language_rag_V1.0_dev.json", limit: int = 100) -> List[Dict]:
     """한국어 QA 테스트 데이터를 로드합니다."""
     print("📚 한국어 QA 테스트 데이터 로드 중...")
     
@@ -61,7 +56,7 @@ def load_test_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.js
     return test_data
 
 
-def load_ground_truth_data(file_path: str = "../resource/korean_language_rag_V1.0_dev.json") -> Dict[str, str]:
+def load_ground_truth_data(file_path: str = "/home/n/Korean_QA_RAG_2025/resource/korean_language_rag_V1.0_dev.json") -> Dict[str, str]:
     """정답 데이터를 ID를 키로 하는 딕셔너리로 로드합니다."""
     print("📚 정답 데이터 로드 중...")
     
@@ -86,7 +81,7 @@ def load_existing_vectorstore():
     print("🔄 기존 Qdrant 벡터스토어 로드 중...")
     
     # DB 경로 확인
-    db_path = "../qdrant_local_db"
+    db_path = "/home/n/Korean_QA_RAG_2025/qdrant_local_db"
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Qdrant DB가 존재하지 않습니다: {db_path}")
     
@@ -137,7 +132,7 @@ def load_prompt_templates():
     print("📝 프롬프트 템플릿 로드 중...")
     
     # 프롬프트 파일 경로 설정
-    base_path = "../prompt"
+    base_path = "/home/n/Korean_QA_RAG_2025/prompt"
     instruction_path = os.path.join(base_path, "00_prompt_Instruction.md")
     context_path = os.path.join(base_path, "01_prompt_context.md")
     correction_path = os.path.join(base_path, "02_prompt_few_shot_선택형.md")  # 실제로는 교정형 예시가 담긴 파일
@@ -237,8 +232,8 @@ def create_rag_chain(vectorstore: QdrantVectorStore):
     
     # Qwen3:8b 모델 설정 (timeout 제거)
     llm = ChatOllama(
-        # model="qwen3-8b-juju:f16",
-        model="qwen3-8b-juju:q4",
+        model="qwen3-8b-1ep-juju:f16",
+        # model="qwen3-8b-1ep-juju:q4",
         base_url="http://localhost:11434",
         temperature=0.1,  # 낮은 온도로 더 결정적인 응답 생성
         num_predict=2048,  # 출력 토큰 수 제한
@@ -491,8 +486,8 @@ def run_test_exam(rag_chain, test_data: List[Dict], ground_truth: Dict[str, str]
 
 def save_test_results(results: List[Dict]):
     """테스트 결과를 result.json 파일로 저장합니다."""
-    output_file = "result.qwen.juju.q4.json"
-    eval_output_file = "../05_dev_evaluation/eval_input.json"
+    output_file = "result.qwen.juju.f16.json"
+    eval_output_file = "/home/n/Korean_QA_RAG_2025/05_dev_evaluation/eval_input.json"
     
     try:
         # 기본 결과 파일 저장

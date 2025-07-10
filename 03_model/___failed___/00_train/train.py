@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Korean QA RAG Fine-tuning Script for Qwen 3-0.6B with 16-bit
-한국어 QA RAG 데이터셋을 이용한 Qwen 3-0.6B 모델 16bit 파인튜닝 스크립트
+Korean QA RAG Fine-tuning Script for Qwen 3-32B with 4-bit Quantization
+한국어 QA RAG 데이터셋을 이용한 Qwen 3-32B 모델 4bit 양자화 파인튜닝 스크립트
 
-이 스크립트는 한국어 질문-답변 데이터셋을 사용하여 Qwen 3-0.6B 모델을 파인튜닝합니다.
-메모리 효율성을 위해 16bit 정밀도를 사용합니다.
+이 스크립트는 한국어 질문-답변 데이터셋을 사용하여 Qwen 3-32B 모델을 파인튜닝합니다.
+메모리 효율성을 위해 4bit 양자화와 LoRA(Low-Rank Adaptation) 기법을 사용합니다.
 """
 
 # 필요한 라이브러리들을 가져옵니다
@@ -12,6 +12,7 @@ import os  # 운영체제 관련 기능 (파일 경로, 디렉토리 확인 등)
 import json  # JSON 파일 읽기/쓰기
 import argparse  # 명령행 인수 파싱
 import logging  # 로그 메시지 출력
+import random  # 난수 생성
 from dataclasses import dataclass, field  # 데이터 클래스 생성을 위한 데코레이터
 from typing import Optional, Dict, Sequence  # 타입 힌트
 import warnings  # 경고 메시지 처리
@@ -24,21 +25,18 @@ from transformers import (
     AutoConfig,  # 모델 설정 자동 로드
     AutoModelForCausalLM,  # 언어 생성 모델 자동 로드
     AutoTokenizer,  # 토크나이저 자동 로드
-    DataCollatorForLanguageModeling,  # 언어 모델링용 데이터 콜레이터
     set_seed,  # 재현 가능한 결과를 위한 시드 설정
     BitsAndBytesConfig,  # 양자화 설정
 )
 from transformers.hf_argparser import HfArgumentParser  # Hugging Face 인수 파서
 from transformers.training_args import TrainingArguments  # 훈련 관련 설정
 from transformers.trainer import Trainer  # 훈련 실행 클래스
+from transformers.data.data_collator import DataCollatorForLanguageModeling  # 언어 모델링용 데이터 콜레이터
 from transformers.trainer_callback import EarlyStoppingCallback  # 조기 중단 콜백
-from transformers.trainer_utils import get_last_checkpoint  # 마지막 체크포인트 찾기
+from transformers.trainer_utils import get_last_checkpoint, IntervalStrategy  # 마지막 체크포인트 찾기, 평가 및 저장 전략 열거형
 # PEFT(Parameter Efficient Fine-Tuning) 라이브러리 - LoRA 구현
 from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_training
 import wandb  # 실험 추적 도구 (Weights & Biases)
-
-# 사용자 정의 데이터 처리 모듈
-from src.data import CustomDataset, DataCollatorForSupervisedDataset
 
 # 불필요한 경고 메시지 숨기기
 warnings.filterwarnings("ignore", category=FutureWarning)  # 미래 버전 관련 경고
@@ -60,7 +58,7 @@ class ModelArguments:
     @dataclass 데코레이터를 사용하여 자동으로 __init__, __repr__ 등 메서드 생성
     """
     model_name_or_path: Optional[str] = field(
-        default="Qwen/Qwen3-32B",  # 기본값: Qwen 3-32B 모델
+        default="Qwen/Qwen3-8B",  # 기본값: Qwen 3-8B 모델
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     config_name: Optional[str] = field(
@@ -96,7 +94,7 @@ class ModelArguments:
         metadata={"help": "Whether or not to allow for custom models defined on the Hub in their own modeling files"}
     )
     use_4bit_quantization: bool = field(
-        default=False,  # 4bit 양자화 사용 안함
+        default=True,  # 4bit 양자화 사용 (메모리 절약)
         metadata={"help": "Whether to use 4-bit quantization for memory efficiency"}
     )
     bnb_4bit_compute_dtype: str = field(
@@ -120,20 +118,24 @@ class DataArguments:
     훈련/검증 데이터 경로, 최대 시퀀스 길이 등을 설정
     """
     train_data_path: str = field(
-        default="../../resource/korean_language_rag_V1.0_train.json",  # 훈련 데이터 파일 경로
+        default="02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 파일 경로 수정
         metadata={"help": "Path to the training data file"}
     )
     val_data_path: Optional[str] = field(
-        default="../../resource/korean_language_rag_V1.0_dev.json",  # 검증 데이터 파일 경로
+        default=None,  # 검증 데이터 별도 지정 안함
         metadata={"help": "Path to the validation data file"}
     )
     max_seq_length: int = field(
-        default=2048,  # 최대 시퀀스 길이 (토큰 개수)
+        default=4096,  # 최대 시퀀스 길이 (토큰 개수)
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."}
     )
     preprocessing_num_workers: Optional[int] = field(
         default=None,  # 전처리용 워커 수 (기본값: CPU 코어 수)
         metadata={"help": "The number of processes to use for the preprocessing."}
+    )
+    validation_split_percentage: Optional[int] = field(
+        default=10,  # 검증 데이터 분할 비율 (10%)
+        metadata={"help": "The percentage of the train set used as validation set in case there's no validation split"}
     )
 
 
@@ -145,15 +147,15 @@ class LoraArguments:
     전체 모델을 업데이트하는 대신 작은 어댑터만 훈련시킵니다.
     """
     use_lora: bool = field(
-        default=False,  # LoRA 사용 안함
+        default=True,  # LoRA 사용 여부
         metadata={"help": "Whether to use LoRA for parameter efficient fine-tuning"}
     )
     lora_r: int = field(
-        default=32,  # LoRA rank (낮을수록 파라미터 수 적음, 높을수록 표현력 증가)
+        default=64,  # LoRA rank (낮을수록 파라미터 수 적음, 높을수록 표현력 증가)
         metadata={"help": "LoRA attention dimension"}
     )
     lora_alpha: int = field(
-        default=64,  # LoRA 스케일링 파라미터 (보통 rank의 2배로 설정)
+        default=128,  # LoRA 스케일링 파라미터 (보통 rank의 2배로 설정)
         metadata={"help": "LoRA scaling parameter"}
     )
     lora_dropout: float = field(
@@ -171,12 +173,13 @@ class LoraArguments:
     )
 
 
-def setup_model_and_tokenizer(model_args: ModelArguments):
+def setup_model_and_tokenizer(model_args: ModelArguments, data_args: DataArguments):
     """
     모델과 토크나이저를 설정하는 함수
     
     Args:
         model_args: 모델 관련 설정을 담은 객체
+        data_args: 데이터 관련 설정을 담은 객체
     
     Returns:
         tuple: (모델, 토크나이저, 설정) 튜플 반환
@@ -202,6 +205,12 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token  # 종료 토큰을 패딩 토큰으로 설정
         tokenizer.pad_token_id = tokenizer.eos_token_id  # ID도 동일하게 설정
+    
+    # EOS 토큰이 제대로 설정되어 있는지 확인
+    if tokenizer.eos_token is None:
+        raise ValueError("토크나이저에 EOS 토큰이 설정되어 있지 않습니다.")
+    
+    logger.info(f"토크나이저 설정 완료: pad_token={tokenizer.pad_token}, eos_token={tokenizer.eos_token}")
 
     # 모델 설정(config) 로드를 위한 설정 딕셔너리
     config_kwargs = {
@@ -215,6 +224,8 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     if model_args.config_name:
         config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)
     else:
+        if model_args.model_name_or_path is None:
+            raise ValueError("model_name_or_path cannot be None")
         config = AutoConfig.from_pretrained(model_args.model_name_or_path, **config_kwargs)
 
     # 4bit 양자화 설정
@@ -236,7 +247,7 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     torch_dtype = (
         model_args.torch_dtype
         if model_args.torch_dtype in ["auto", None]
-        else getattr(torch, model_args.torch_dtype)
+        else getattr(torch, model_args.torch_dtype) if model_args.torch_dtype else None
     )
     
     # 양자화를 사용할 때는 torch_dtype을 None으로 설정 (충돌 방지)
@@ -244,13 +255,12 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
         torch_dtype = None
 
     # 실제 모델 로드
-    model_name = model_args.model_name_or_path
-    if model_name is None:
-        raise ValueError("model_name_or_path는 None일 수 없습니다.")
+    if model_args.model_name_or_path is None:
+        raise ValueError("model_name_or_path cannot be None")
     
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,  # 모델 경로 또는 이름
-        from_tf=bool(".ckpt" in model_name),  # TensorFlow 체크포인트 여부
+        model_args.model_name_or_path,  # 모델 경로 또는 이름
+        from_tf=bool(".ckpt" in model_args.model_name_or_path),  # TensorFlow 체크포인트 여부
         config=config,  # 모델 설정
         cache_dir=model_args.cache_dir,  # 캐시 디렉토리
         revision=model_args.model_revision,  # 모델 버전
@@ -271,6 +281,13 @@ def setup_model_and_tokenizer(model_args: ModelArguments):
     # 새로운 토큰이 추가된 경우 필요합니다
     if len(tokenizer) > model.get_input_embeddings().num_embeddings:
         model.resize_token_embeddings(len(tokenizer))
+
+    # 생성 설정 업데이트 (생성 시 최대 길이 제한)
+    if hasattr(model, "generation_config"):
+        model.generation_config.max_length = data_args.max_seq_length
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        logger.info(f"생성 설정 업데이트: max_length={model.generation_config.max_length}, eos_token_id={model.generation_config.eos_token_id}")
 
     return model, tokenizer, config
 
@@ -298,16 +315,13 @@ def apply_lora(model, lora_args: LoraArguments):
     target_modules = lora_args.lora_target_modules.split(",") if lora_args.lora_target_modules else None
     
     # LoRA 설정 생성
-    bias_value = lora_args.lora_bias
-    if bias_value not in ["none", "all", "lora_only"]:
-        bias_value = "none"
-    
+    from typing import cast, Literal
     lora_config = LoraConfig(
         r=lora_args.lora_r,  # LoRA rank (낮을수록 파라미터 적음)
         lora_alpha=lora_args.lora_alpha,  # 스케일링 파라미터
         target_modules=target_modules,  # LoRA를 적용할 모듈들
         lora_dropout=lora_args.lora_dropout,  # 드롭아웃 비율
-        bias=bias_value,  # 바이어스 처리 방식
+        bias=cast(Literal["none", "all", "lora_only"], lora_args.lora_bias),  # 바이어스 처리 방식
         task_type=TaskType.CAUSAL_LM,  # 작업 타입: 인과적 언어 모델링
     )
     
@@ -317,6 +331,153 @@ def apply_lora(model, lora_args: LoraArguments):
     model.print_trainable_parameters()
     
     return model
+
+
+class CustomDataset(torch.utils.data.Dataset):
+    """
+    한국어 QA RAG 데이터셋을 위한 사용자 정의 데이터셋 클래스
+    
+    데이터 구조:
+    [
+      {
+        "question": "Instruction:\n...\n질문: ...",
+        "answer": "..."
+      },
+      ...
+    ]
+    """
+    def __init__(self, data_path, tokenizer, max_length=2048):
+        """
+        데이터셋 초기화
+        
+        Args:
+            data_path: 데이터 파일 경로
+            tokenizer: 토크나이저 객체
+            max_length: 최대 시퀀스 길이
+        """
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        
+        # JSON 파일에서 데이터 로드
+        with open(data_path, 'r', encoding='utf-8') as f:
+            raw_data = json.load(f)
+        
+        # 데이터 전처리: 특수 토큰 제거
+        self.data = self._preprocess_data(raw_data)
+        
+        logger.info(f"{data_path}에서 {len(self.data)} 개의 데이터를 로드했습니다.")
+    
+    def _preprocess_data(self, raw_data):
+        """
+        데이터 전처리 함수
+        
+        Args:
+            raw_data: 원본 데이터
+            
+        Returns:
+            전처리된 데이터
+        """
+        processed_data = []
+        special_tokens = ["[답변]", "[/답변]", "[답문]", "[/답문]"]
+        
+        for item in raw_data:
+            question = item["question"]
+            answer = item["answer"]
+            
+            # 답변에서 특수 토큰 제거
+            for token in special_tokens:
+                answer = answer.replace(token, "")
+            
+            # 공백 정리
+            answer = answer.strip()
+            
+            # 전처리된 데이터 추가
+            processed_data.append({
+                "question": question,
+                "answer": answer
+            })
+            
+        return processed_data
+    
+    def __len__(self):
+        """데이터셋 길이 반환"""
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        """
+        인덱스에 해당하는 데이터 항목 반환
+        
+        Args:
+            idx: 데이터 인덱스
+            
+        Returns:
+            dict: 토큰화된 입력 및 라벨
+        """
+        item = self.data[idx]
+        question = item["question"]
+        answer = item["answer"]
+        input_text = question
+        
+        # 전체 텍스트: 질문 + 구분자 + 답변 + EOS 토큰
+        # 답변이 완전히 끝나도록 EOS 토큰을 명시적으로 추가
+        full_text = input_text + answer + self.tokenizer.eos_token
+        
+        # 입력 부분(질문 + 구분자) 토큰화
+        input_encodings = self.tokenizer(
+            input_text,
+            max_length=self.max_length,
+            padding=False,
+            truncation=True,
+            return_tensors="pt"
+        )
+        
+        # 전체 텍스트(질문 + 구분자 + 답변) 토큰화
+        # add_special_tokens=True로 설정하여 EOS 토큰이 자동으로 추가되도록 함
+        full_encodings = self.tokenizer(
+            full_text,
+            max_length=self.max_length,
+            padding="max_length",
+            truncation=True,
+            add_special_tokens=True,
+            return_tensors="pt"
+        )
+        
+        # 배치 차원 제거
+        input_ids = full_encodings.input_ids.squeeze(0)
+        attention_mask = full_encodings.attention_mask.squeeze(0)
+        
+        # 라벨 설정: 입력 부분은 -100으로 마스킹, 답변 부분만 실제 라벨
+        labels = input_ids.clone()
+        
+        # 입력 부분(질문 + 구분자)의 길이 계산
+        input_length = input_encodings.input_ids.shape[1]
+        
+        # 입력 부분은 -100으로 마스킹 (loss 계산에서 제외)
+        if input_length < len(labels):
+            labels[:input_length] = -100
+        
+        # 패딩 토큰에 대한 라벨도 -100으로 설정
+        padding_mask = attention_mask == 0
+        labels[padding_mask] = -100
+        
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels
+        }
+
+class DataCollatorForSupervisedDataset(DataCollatorForLanguageModeling):
+    """
+    지도 학습용 데이터 콜레이터
+    배치 내 시퀀스들을 패딩하고 적절한 형태로 변환
+    """
+    def __init__(self, tokenizer):
+        super().__init__(tokenizer=tokenizer, mlm=False)
+    
+    def __call__(self, examples):
+        # 배치를 구성하는 예제들을 하나의 텐서로 변환
+        batch = super().__call__(examples)
+        return batch
 
 
 def setup_datasets(data_args: DataArguments, tokenizer):
@@ -332,18 +493,118 @@ def setup_datasets(data_args: DataArguments, tokenizer):
     """
     
     # 훈련 데이터셋 생성
-    # CustomDataset은 src/data.py에 정의된 사용자 정의 데이터셋 클래스
-    train_dataset = CustomDataset(data_args.train_data_path, tokenizer)
+    train_dataset = CustomDataset(data_args.train_data_path, tokenizer, max_length=data_args.max_seq_length)
     logger.info(f"훈련 데이터셋 크기: {len(train_dataset)}")
     
-    # 검증 데이터셋 생성 (선택사항)
-    # 검증 데이터 경로가 지정되고 파일이 존재하는 경우에만 생성
+    # 검증 데이터셋 생성
     eval_dataset = None
+    
+    # 검증 데이터 경로가 지정된 경우 해당 파일에서 로드
     if data_args.val_data_path and os.path.exists(data_args.val_data_path):
-        eval_dataset = CustomDataset(data_args.val_data_path, tokenizer)
+        eval_dataset = CustomDataset(data_args.val_data_path, tokenizer, max_length=data_args.max_seq_length)
         logger.info(f"검증 데이터셋 크기: {len(eval_dataset)}")
+    # 검증 데이터 경로가 없는 경우 훈련 데이터에서 일부를 분할
+    elif data_args.validation_split_percentage > 0:
+        logger.info(f"별도의 검증 데이터가 없어 훈련 데이터의 {data_args.validation_split_percentage}%를 검증 데이터로 사용합니다.")
+        
+        # 데이터셋 크기 계산
+        dataset_size = len(train_dataset)
+        val_size = int(dataset_size * data_args.validation_split_percentage / 100)
+        train_size = dataset_size - val_size
+        
+        # 데이터셋 분할
+        train_dataset, eval_dataset = torch.utils.data.random_split(
+            train_dataset, 
+            [train_size, val_size],
+            generator=torch.Generator().manual_seed(42)  # 재현성을 위한 시드 설정
+        )
+        
+        logger.info(f"훈련 데이터셋 크기(분할 후): {len(train_dataset)}")
+        logger.info(f"검증 데이터셋 크기(분할 후): {len(eval_dataset)}")
     
     return train_dataset, eval_dataset
+
+
+class CustomTrainer(Trainer):
+    """
+    Trainer 클래스를 상속받아 커스텀 동작을 추가한 트레이너
+    
+    생성 시 EOS 토큰을 적절히 처리하고, 답변이 중간에 끊기지 않도록 합니다.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """
+        손실 계산 함수를 오버라이드하여 필요한 경우 추가 처리를 수행합니다.
+        
+        Args:
+            model: 모델
+            inputs: 입력 데이터
+            return_outputs: 출력값 반환 여부
+            num_items_in_batch: 배치 내 아이템 수 (옵션)
+            
+        Returns:
+            손실값 또는 (손실값, 출력값) 튜플
+        """
+        # 기본 손실 계산은 부모 클래스의 메서드를 사용
+        return super().compute_loss(model, inputs, return_outputs, num_items_in_batch)
+    
+    def prediction_step(self, model, inputs, prediction_loss_only=False, ignore_keys=None):
+        """
+        예측 단계 함수를 오버라이드하여 생성 과정을 제어합니다.
+        
+        Args:
+            model: 모델
+            inputs: 입력 데이터
+            prediction_loss_only: 손실만 계산할지 여부
+            ignore_keys: 무시할 키들
+            
+        Returns:
+            손실값, 로그 확률, 라벨 튜플
+        """
+        # 평가 모드에서만 생성 설정을 적용
+        if not self.training and not prediction_loss_only:
+            # 입력 부분만 추출 (라벨이 -100인 부분)
+            input_ids = inputs["input_ids"].clone()
+            labels = inputs["labels"].clone()
+            
+            # 라벨이 -100인 부분은 원래 입력, 아닌 부분은 패딩 토큰으로 설정
+            for i in range(input_ids.shape[0]):
+                for j in range(input_ids.shape[1]):
+                    if labels[i, j] != -100:
+                        input_ids[i, j] = self.tokenizer.pad_token_id
+            
+            # 생성 설정
+            gen_kwargs = {
+                "max_length": self.model.config.max_position_embeddings,
+                "num_beams": 1,  # 빔 서치 비활성화 (그리디 디코딩)
+                "do_sample": False,  # 샘플링 비활성화
+                "temperature": 1.0,  # 온도 파라미터 (1.0은 변형 없음)
+                "top_p": 1.0,  # 누적 확률 임계값 (1.0은 모든 토큰 고려)
+                "eos_token_id": self.tokenizer.eos_token_id,  # 종료 토큰 ID
+                "pad_token_id": self.tokenizer.pad_token_id,  # 패딩 토큰 ID
+            }
+            
+            # 생성 실행
+            generated_tokens = model.generate(
+                input_ids,
+                attention_mask=inputs["attention_mask"],
+                **gen_kwargs
+            )
+            
+            # 생성된 결과 로깅 (디버깅용)
+            if self.args.local_rank == 0 and random.random() < 0.01:  # 1% 확률로 로깅
+                for i in range(min(3, input_ids.shape[0])):  # 최대 3개 샘플만 로깅
+                    input_text = self.tokenizer.decode(input_ids[i], skip_special_tokens=True)
+                    generated_text = self.tokenizer.decode(generated_tokens[i], skip_special_tokens=True)
+                    logger.info(f"입력: {input_text[:50]}...")
+                    logger.info(f"생성: {generated_text}")
+                    logger.info("-" * 50)
+        
+        # 기본 예측 단계 실행
+        return super().prediction_step(model, inputs, prediction_loss_only, ignore_keys)
 
 
 def main():
@@ -394,7 +655,7 @@ def main():
     set_seed(training_args.seed)
 
     # 모델과 토크나이저 설정
-    model, tokenizer, config = setup_model_and_tokenizer(model_args)
+    model, tokenizer, config = setup_model_and_tokenizer(model_args, data_args)
     logger.info(f"모델 로드 완료: {model_args.model_name_or_path}")
 
     # LoRA 적용 (메모리 효율적인 파인튜닝을 위해)
@@ -422,21 +683,25 @@ def main():
 
     # 조기 중단(Early Stopping) 콜백 설정
     # Loss가 0.05 이하로 떨어지거나 개선이 없으면 훈련을 중단합니다
-    early_stopping_callback = EarlyStoppingCallback(
-        early_stopping_patience=5,  # 5번의 평가에서 개선이 없으면 중단
-        early_stopping_threshold=0.05  # Loss가 0.05 이하가 되면 목표 달성으로 간주
-    )
+    callbacks = []
+    if hasattr(training_args, "eval_strategy") and training_args.eval_strategy != IntervalStrategy.NO:
+        logger.info(f"평가 전략: {training_args.eval_strategy}")
+        early_stopping_callback = EarlyStoppingCallback(
+            early_stopping_patience=5,  # 5번의 평가에서 개선이 없으면 중단
+            early_stopping_threshold=0.05  # Loss가 0.05 이하가 되면 목표 달성으로 간주
+        )
+        callbacks.append(early_stopping_callback)
     
-    # Trainer 객체 생성
-    # Trainer는 HuggingFace에서 제공하는 고수준 훈련 API입니다
-    trainer = Trainer(
+    # CustomTrainer 객체 생성
+    # 커스텀 트레이너를 사용하여 생성 동작을 더 잘 제어합니다
+    trainer = CustomTrainer(
         model=model,  # 훈련할 모델
         args=training_args,  # 훈련 관련 설정
         train_dataset=train_dataset,  # 훈련 데이터셋
         eval_dataset=eval_dataset,  # 검증 데이터셋
         tokenizer=tokenizer,  # 토크나이저
         data_collator=data_collator,  # 데이터 콜레이터
-        callbacks=[early_stopping_callback],  # 콜백 함수들
+        callbacks=callbacks,  # 콜백 함수들
     )
 
     # 훈련 실행
@@ -503,25 +768,24 @@ def create_training_config():
     """
     return {
         # 모델 관련 설정
-        "model_name_or_path": "Qwen/Qwen3-0.6B",  # 사용할 모델
+        "model_name_or_path": "Qwen/Qwen3-8B",  # 사용할 모델
         
         # 양자화 관련 설정 (메모리 절약)
-        "use_4bit_quantization": True,  # 4bit 양자화 사용
+        "use_4bit_quantization": False,  # 4bit 양자화 사용 안함
         "bnb_4bit_compute_dtype": "float16",  # 계산용 데이터 타입
         "bnb_4bit_quant_type": "nf4",  # 양자화 타입
         "bnb_4bit_use_double_quant": True,  # 이중 양자화 사용
         
         # 데이터 관련 설정
-        "train_data_path": "resource/RAG/korean_language_rag_V1.0_train.json",  # 훈련 데이터
-        "val_data_path": "resource/RAG/korean_language_rag_V1.0_dev.json",  # 검증 데이터
-        "max_seq_length": 2048,  # 최대 시퀀스 길이
+        "train_data_path": "02_makeDataset_for_train/final_dataset.json",  # 훈련 데이터 경로
+        "val_data_path": None,  # 검증 데이터는 훈련 데이터에서 분할
+        "max_seq_length": 4096,  # 최대 시퀀스 길이
         
         # 출력 및 로깅 설정
-        "output_dir": "./results",  # 결과 저장 디렉토리
+        "output_dir": "./results/qwen3-8b-16bit-lora-korean-qa-rag",  # 결과 저장 디렉토리
         "overwrite_output_dir": True,  # 기존 디렉토리 덮어쓰기
         "do_train": True,  # 훈련 실행
         "do_eval": True,  # 평가 실행
-        "evaluation_strategy": "steps",  # 평가 전략
         "eval_steps": 100,  # 평가 간격
         "save_strategy": "steps",  # 저장 전략
         "save_steps": 100,  # 저장 간격
@@ -531,25 +795,30 @@ def create_training_config():
         
         # 훈련 하이퍼파라미터
         "num_train_epochs": 5,  # 훈련 에포크 수
-        "per_device_train_batch_size": 1,  # 디바이스당 훈련 배치 크기
-        "per_device_eval_batch_size": 2,  # 디바이스당 평가 배치 크기
-        "gradient_accumulation_steps": 16,  # 그래디언트 누적 스텝
+        "per_device_train_batch_size": 16,  # 디바이스당 훈련 배치 크기
+        "per_device_eval_batch_size": 16,  # 디바이스당 평가 배치 크기
+        "gradient_accumulation_steps": 1,  # 그래디언트 누적 스텝
         "learning_rate": 1e-4,  # 학습률
         "weight_decay": 0.01,  # 가중치 감쇠
         "warmup_ratio": 0.03,  # 워밍업 비율
         "lr_scheduler_type": "cosine",  # 학습률 스케줄러
+        "dataloader_num_workers": 4,  # 데이터 로더 워커 수
+        "fp16": True,  # 16bit 정밀도 사용
         
         # LoRA 관련 설정
-        "use_lora": False,  # LoRA 사용 안함
+        "use_lora": True,  # LoRA 사용
         "lora_r": 64,  # LoRA rank
         "lora_alpha": 128,  # LoRA alpha
         "lora_dropout": 0.05,  # LoRA 드롭아웃
+        "lora_target_modules": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",  # 타겟 모듈
         
         # 기타 설정
         "seed": 42,  # 랜덤 시드
-        "dataloader_num_workers": 0,  # 데이터 로더 워커 수
         "report_to": "tensorboard",  # 리포트 도구
         "run_name": "korean-qa-rag-finetune",  # 실험 이름
+        "trust_remote_code": True,  # 원격 코드 신뢰
+        "ddp_find_unused_parameters": False,  # 미사용 파라미터 찾기 비활성화
+        "validation_split_percentage": 10,  # 검증 데이터 분할 비율
     }
 
 

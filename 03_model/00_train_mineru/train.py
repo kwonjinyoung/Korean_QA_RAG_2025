@@ -2,16 +2,24 @@ import os
 import orjson
 import fire
 import torch
+import unsloth
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    DataCollatorForLanguageModeling,
 )
+from dotenv import load_dotenv
 from trl import DPOConfig, SFTConfig, SFTTrainer
 from unsloth import FastLanguageModel, is_bfloat16_supported
+from typing import Dict
 
 import wandb
+
+# flash attention 및 xformers 비활성화
+os.environ["USE_FLASH_ATTENTION"] = "0"
+os.environ["USE_FLASH_ATTENTION_2"] = "0"
+os.environ["DISABLE_FLASH_ATTN"] = "1"
+os.environ["USE_XFORMERS"] = "0"
 
 class CustomDataset(torch.utils.data.Dataset):
     """
@@ -26,7 +34,7 @@ class CustomDataset(torch.utils.data.Dataset):
       ...
     ]
     """
-    def __init__(self, data_path, tokenizer, max_length=2048):
+    def __init__(self, data_path: str, tokenizer, max_length: int = 4096):
         """
         데이터셋 초기화
         
@@ -79,11 +87,11 @@ class CustomDataset(torch.utils.data.Dataset):
             
         return processed_data
     
-    def __len__(self):
+    def __len__(self) -> int:
         """데이터셋 길이 반환"""
         return len(self.data)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
         인덱스에 해당하는 데이터 항목 반환
         
@@ -147,9 +155,9 @@ class CustomDataset(torch.utils.data.Dataset):
         }
 
 
-
 class TrainCli:
     def __init__(self):
+        load_dotenv()
         self.token = os.getenv("HF_TOKEN")
         self.write_token = os.getenv("HF_WRITE_TOKEN")
 
@@ -158,10 +166,11 @@ class TrainCli:
         is_lora: bool = False,
         is_sft: bool = True,
         is_dpo: bool = False,
-        is_unsloth: bool = False,
-        model_path: str = "unsloth/gemma-3-12b-it",
-        # model_path: str = "unsloth/Qwen3-8B",
+        is_unsloth: bool = True,
+        max_length: int = 4096,
+        model_path: str = "unsloth/Qwen3-8B",
         # model_path: str = "unsloth/Qwen3-14B",
+        # model_path: str = "unsloth/gemma-3-12b-it",
     ):
         if is_unsloth:
             is_lora = False
@@ -173,13 +182,33 @@ class TrainCli:
             is_unsloth = False
         self.model_name = model_path
 
+        # peft_config 초기화
+        peft_config = None
+
         if is_unsloth:
+            is_load_in_4bit = False
+            is_load_in_8bit = False
+            if model_path == "unsloth/gemma-3-4b-it":
+                is_load_in_4bit = False
+                is_load_in_8bit = True
+            elif model_path == "unsloth/Qwen3-8B":
+                is_load_in_4bit = True
+                is_load_in_8bit = False
+            elif model_path == "unsloth/gemma-3-12b-it":
+                is_load_in_4bit = False
+                is_load_in_8bit = True
+            elif model_path == "unsloth/Qwen3-14B":
+                is_load_in_4bit = True
+                is_load_in_8bit = False
+            else:
+                raise Exception("베이스 모델이 unsloth이 아닙니다.")
             model, tokenizer = FastLanguageModel.from_pretrained(
                 model_name=self.model_name,
                 dtype=None,
                 device_map="auto",
-                load_in_4bit=False,
-                max_seq_length=4096,
+                load_in_4bit=is_load_in_4bit,
+                load_in_8bit=is_load_in_8bit,
+                max_seq_length=max_length,
             )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
@@ -226,16 +255,16 @@ class TrainCli:
                     "up_proj",
                     "down_proj",
                 ],
-                lora_dropout=0.5,
+                lora_dropout=0,  # int 타입으로 수정
                 bias="none",
-                use_gradient_checkpointing="unsloth",
+                use_gradient_checkpointing=True,  # bool 타입으로 수정
                 use_rslora=False,
                 loftq_config=None,
             )
 				# Todo : 데이터셋 다시 로드 작업 해주셔야 합니다.
         
         train_data_path = "/home/n/Korean_QA_RAG_2025/02_makeDataset_for_train/final_dataset.json"
-        tokenized_datasets = CustomDataset(train_data_path, tokenizer, max_length=4096)
+        tokenized_datasets = CustomDataset(train_data_path, tokenizer, max_length=max_length)
         wandb_project: str = "{}".format(self.model_name.split("/")[-1])
         wandb_entity: str = "mineru"
         wandb_run_name: str = ""
@@ -251,31 +280,31 @@ class TrainCli:
         if len(wandb_log_model) > 0:
             os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
-        EOS_TOKEN = tokenizer.eos_token
-
         if torch.cuda.device_count() > 1:
-            model.is_parallelizable = True
-            model.model_parallel = True
+            # 타입 체크 무시하고 모델 병렬화 설정
+            setattr(model, 'is_parallelizable', True)  # type: ignore
+            setattr(model, 'model_parallel', True)  # type: ignore
 
         wandb.init(entity=wandb_entity, project=wandb_project)
 
         if is_unsloth:
             if is_sft:
                 training_args = SFTConfig(
+                    # max_steps=1,
                     eval_strategy="no",
                     output_dir=f"./output",
-                    warmup_steps=1000,
+                    warmup_steps=100,
                     logging_steps=1,
                     learning_rate=1e-5,
-                    per_device_train_batch_size=2,
-                    gradient_accumulation_steps=2,
-                    num_train_epochs=1,
+                    per_device_train_batch_size=1,
+                    gradient_accumulation_steps=1,
+                    num_train_epochs=3,
                     optim="adamw_8bit",
                     fp16=not is_bfloat16_supported(),
                     bf16=is_bfloat16_supported(),
                     save_strategy="steps",
                     save_total_limit=3,
-                    save_steps=1000,
+                    save_steps=100,
                     report_to="wandb" if use_wandb else None,
                     run_name=wandb_run_name if use_wandb else None,
                     lr_scheduler_type="linear",
@@ -284,18 +313,18 @@ class TrainCli:
                 training_args = DPOConfig(
                     eval_strategy="no",
                     output_dir=f"./output",
-                    warmup_steps=1000,
+                    warmup_steps=100,
                     logging_steps=1,
                     learning_rate=1e-5,
-                    per_device_train_batch_size=2,
-                    gradient_accumulation_steps=2,
+                    per_device_train_batch_size=1,
+                    gradient_accumulation_steps=1,
                     num_train_epochs=1,
                     optim="adamw_8bit",
                     fp16=not is_bfloat16_supported(),
                     bf16=is_bfloat16_supported(),
                     save_strategy="steps",
                     save_total_limit=3,
-                    save_steps=1000,
+                    save_steps=100,
                     report_to="wandb" if use_wandb else None,
                     run_name=wandb_run_name if use_wandb else None,
                     lr_scheduler_type="linear",
@@ -342,29 +371,32 @@ class TrainCli:
                     lr_scheduler_type="linear",
                 )
 
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=tokenizer,
-            mlm=False,
-        )
-
         trainer = SFTTrainer(
             model=model,
             args=training_args,
-            train_dataset=tokenized_datasets["train"],
-            packing=False,
-            data_collator=data_collator,
+            train_dataset=tokenized_datasets,  # type: ignore
             peft_config=peft_config if is_lora else None,
         )
         trainer.train()
 
-        repo_name = self.model_name
+        repo_name = self.model_name.replace("unsloth", "Mineru")
         if is_unsloth:
-            model.push_to_hub_merged(
-                repo_name,
-                tokenizer,
-                save_method="merged_16bit",
-                token=self.write_token,
-            )
+            if model_path.lower().find("8b") != -1:
+                model.save_pretrained_merged(
+                    "models/" + repo_name + "-3epoch",
+                    tokenizer,
+                    save_method="merged_16bit",
+                    token=self.write_token,
+                )
+            elif model_path.lower().find("12b") != -1 or model_path.lower().find("14b") != -1:
+                model.save_pretrained_merged(
+                    "models/" + repo_name,
+                    tokenizer,
+                    save_method="merged_4bit",
+                    token=self.write_token,
+                )
+            else:
+                print("모델 저장 불가")
         else:
             if is_lora:
                 model = model.merge_and_unload()
